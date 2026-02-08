@@ -9,10 +9,11 @@ import { useCoverBuilder } from '@/lib/hooks/useCoverBuilder';
 import { secondsToTimecode } from '@/lib/util';
 import { IconPlayerPauseFilled, IconPlayerPlayFilled, IconPlayerSkipBackFilled, IconPlayerSkipForwardFilled } from '@tabler/icons-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TrackPlayer, { State, usePlaybackState, useProgress } from 'react-native-track-player';
+import { router } from 'expo-router';
 
 export default function MainTab() {
     const insets = useSafeAreaInsets();
@@ -94,7 +95,9 @@ export default function MainTab() {
                 <View style={styles.metadata}>
                     <View style={styles.metadataContainer}>
                         <Title size={18} fontFamily="Poppins-SemiBold" numberOfLines={1}>{nowPlaying.title}</Title>
-                        <Title size={16} color={colors.text[1]} fontFamily="Poppins-Regular" numberOfLines={1}>{nowPlaying.artist}</Title>
+                        <Pressable onPress={() => nowPlaying.artistId && router.push({ pathname: '/artists/[id]', params: { id: nowPlaying.artistId } })}>
+                            <Title size={16} color={colors.text[1]} fontFamily="Poppins-Regular" numberOfLines={1}>{nowPlaying.artist}</Title>
+                        </Pressable>
                     </View>
                     <NowPlayingActions />
                 </View>
