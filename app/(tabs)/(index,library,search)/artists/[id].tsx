@@ -1,0 +1,172 @@
+import Container from '@/lib/components/Container';
+import Header from '@/lib/components/Header';
+import { useApi, useColors, useCoverBuilder, useQueue, useTabsHeight } from '@lib/hooks';
+import ActionIcon from '@/lib/components/ActionIcon';
+import { LibSize, LibLayout, LibSeparators } from '@/lib/components/MediaLibraryList';
+import MediaLibItem from '@/lib/components/MediaLibraryList/Item';
+import { IconArrowsShuffle, IconDots, IconPlayerPlayFilled } from '@tabler/icons-react-native';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Animated, { Easing, useAnimatedRef, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { ArtistWithAlbumsID3, AlbumID3 } from '@lib/types';
+import Cover from '@/lib/components/Cover';
+import Title from '@/lib/components/Title';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PlaylistBackground } from '@/lib/components/Playlist/PlaylistBackground';
+
+export default function Artist() {
+    const { id } = useLocalSearchParams();
+
+    const api = useApi();
+    const cover = useCoverBuilder();
+    const queue = useQueue();
+    const colors = useColors();
+    const [tabsHeight] = useTabsHeight();
+    const listRef = useAnimatedRef<FlatList>();
+    const insets = useSafeAreaInsets();
+
+    const [data, setData] = useState<ArtistWithAlbumsID3 | null>(null);
+
+    const containerOpacity = useSharedValue(0);
+
+    const containerStyle = useAnimatedStyle(() => ({
+        opacity: containerOpacity.value,
+    }));
+
+    useEffect(() => {
+        if (!data) return;
+        containerOpacity.value = withTiming(1, { duration: 200, easing: Easing.inOut(Easing.ease) });
+    }, [data]);
+
+    const refreshArtist = useCallback(async () => {
+        if (!api) return;
+        const res = await api.get('/getArtist', { params: { id } });
+        const artist = res.data?.['subsonic-response']?.artist as ArtistWithAlbumsID3;
+        if (artist) setData(artist);
+    }, [api, id]);
+
+    useFocusEffect(useCallback(() => {
+        refreshArtist();
+    }, [refreshArtist]));
+
+    const allSongs = useMemo(() => {
+        return data?.album?.flatMap(a => a.song ?? []) ?? [];
+    }, [data?.album]);
+
+    const playAction = useCallback((shuffle: boolean) => {
+        if (!allSongs.length) return;
+        queue.replace(allSongs, {
+            initialIndex: 0,
+            source: {
+                source: 'artist',
+                sourceId: data?.id,
+                sourceName: data?.name,
+            },
+            shuffle,
+        });
+    }, [data, allSongs, queue.replace]);
+
+    const styles = useMemo(() => StyleSheet.create({
+        header: {
+            alignItems: 'center',
+            paddingTop: 50 + insets.top,
+            paddingBottom: 20,
+        },
+        title: {
+            marginTop: 16,
+            marginHorizontal: 20,
+            alignItems: 'center',
+        },
+        actions: {
+            flexDirection: 'row',
+            marginTop: 16,
+            gap: 16,
+            alignItems: 'center',
+        },
+        albumCount: {
+            marginTop: 4,
+        }
+    }), [colors, insets]);
+
+    const renderItem = useCallback(({ item, index }: { item: AlbumID3, index: number }) => (
+        <MediaLibItem
+            id={item.id}
+            title={item.name}
+            subtitle={`${item.songCount} ${item.songCount === 1 ? 'song' : 'songs'} • ${item.year ?? 'Unknown year'}`}
+            coverUri={cover.generateUrl(item.coverArt ?? '', { size: 128 })}
+            coverCacheKey={`${item.coverArt}-128x128`}
+            type="album"
+            onPress={() => {
+                router.push({ pathname: '/albums/[id]', params: { id: item.id } });
+            }}
+        />
+    ), [cover]);
+
+    const ListHeader = useMemo(() => {
+        if (!data) return null;
+
+        return (
+            <View style={styles.header}>
+                <PlaylistBackground
+                    source={{ uri: cover.generateUrl(data.coverArt ?? '') }}
+                    cacheKey={`${data.coverArt}-full`}
+                />
+                <Cover
+                    source={{ uri: cover.generateUrl(data.coverArt ?? '') }}
+                    cacheKey={`${data.coverArt}-full`}
+                    size={200}
+                    radius={100}
+                />
+                <View style={styles.title}>
+                    <Title align="center" size={24} fontFamily="Poppins-SemiBold">{data.name}</Title>
+                    <View style={styles.albumCount}>
+                        <Title align="center" size={14} fontFamily="Poppins-Regular" color={colors.text[1]}>
+                            {data.albumCount} {data.albumCount === 1 ? 'album' : 'albums'}
+                        </Title>
+                    </View>
+                </View>
+                <View style={styles.actions}>
+                    <ActionIcon icon={IconPlayerPlayFilled} variant='primary' isFilled size={24} extraSize={32} onPress={() => playAction(false)} />
+                    <ActionIcon icon={IconArrowsShuffle} variant='subtleFilled' size={20} extraSize={24} onPress={() => playAction(true)} />
+                </View>
+            </View>
+        );
+    }, [data, cover, colors, styles, playAction]);
+
+    return (
+        <Container includeTop={false} includeBottom={false}>
+            <Header
+                withBackIcon
+                withAvatar={false}
+                floating
+                scrollRef={listRef}
+                interpolationRange={[200, 350]}
+                title={data?.name}
+                titleSize={18}
+                initialHideTitle
+                rightSection={<>
+                    <ActionIcon icon={IconDots} size={16} variant='secondary' />
+                </>} />
+            <Animated.View style={[{ flex: 1 }, containerStyle]}>
+                <LibLayout.Provider value="list">
+                    <LibSize.Provider value="medium">
+                        <LibSeparators.Provider value={false}>
+                            <FlatList
+                                data={data?.album}
+                                keyExtractor={(item) => item.id}
+                                ref={listRef}
+                                renderItem={renderItem}
+                                ListHeaderComponent={ListHeader}
+                                ListFooterComponent={<View style={{ height: tabsHeight + 10 }} />}
+                            />
+                        </LibSeparators.Provider>
+                    </LibSize.Provider>
+                </LibLayout.Provider>
+            </Animated.View>
+        </Container>
+    )
+}
+
+import { router } from 'expo-router';

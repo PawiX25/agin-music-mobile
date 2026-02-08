@@ -1,13 +1,14 @@
 import React, { useContext, useEffect, useMemo } from 'react';
 import MediaLibraryList, { LibLayout } from '@lib/components/MediaLibraryList';
 import { TMediaLibItem } from '@lib/components/MediaLibraryList/Item';
-import { useCoverBuilder, useMemoryCache } from '@/lib/hooks';
+import { useCoverBuilder, useHomeItemActions, useMemoryCache } from '@/lib/hooks';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 
 export function ArtistsTab() {
     const cache = useMemoryCache();
     const cover = useCoverBuilder();
+    const { press } = useHomeItemActions();
 
     const layout = useContext(LibLayout);
 
@@ -31,7 +32,7 @@ export function ArtistsTab() {
     return (
         <MediaLibraryList
             data={data}
-            onItemPress={() => {}}
+            onItemPress={press}
             layout={layout}
         />
     )

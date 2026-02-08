@@ -14,6 +14,7 @@ import React from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import TrackPlayer, { State, usePlaybackState } from 'react-native-track-player';
+import { router } from 'expo-router';
 
 function RenderItem(item: Child) {
     const colors = useColors();
@@ -55,14 +56,16 @@ function RenderItem(item: Child) {
                     {isEmpty ? 'Not Playing' : item.title}
                 </Title>
                 {!isEmpty && (
-                    <Title
-                        size={12}
-                        fontFamily="Poppins-Regular"
-                        color={colors.text[1]}
-                        numberOfLines={1}
-                    >
-                        {item.artist}
-                    </Title>
+                    <Pressable onPress={() => item.artistId && router.push({ pathname: '/artists/[id]', params: { id: item.artistId } })}>
+                        <Title
+                            size={12}
+                            fontFamily="Poppins-Regular"
+                            color={colors.text[1]}
+                            numberOfLines={1}
+                        >
+                            {item.artist}
+                        </Title>
+                    </Pressable>
                 )}
             </View>
         </View>
