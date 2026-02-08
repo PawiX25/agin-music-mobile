@@ -15,6 +15,8 @@ export function useHomeItemActions() {
             router.push({ pathname: '/albums/[id]', params: { id: item.id } });
         } else if (item.type === 'playlist') {
             router.push({ pathname: '/playlists/[id]', params: { id: item.id } });
+        } else if (item.type === 'artist') {
+            router.push({ pathname: '/artists/[id]', params: { id: item.id } });
         }
     }, [queue.playTrackNow]);
 
