@@ -1,5 +1,5 @@
 import { createContext, useCallback, useEffect, useState } from 'react';
-import { AlbumID3, AlbumList2, AlbumWithSongsID3, Playlist, PlaylistWithSongs } from '@lib/types';
+import { AlbumID3, AlbumList2, AlbumWithSongsID3, ArtistID3, ArtistsID3, Child, Playlist, PlaylistWithSongs } from '@lib/types';
 import { useApi, useServer } from '@lib/hooks';
 
 export type MemoryCache = {
@@ -7,6 +7,8 @@ export type MemoryCache = {
     playlists: Record<string, PlaylistWithSongs>;
     allAlbums: AlbumID3[];
     albums: Record<string, AlbumWithSongsID3>;
+    allArtists: ArtistID3[];
+    allSongs: Child[];
 };
 
 export type MemoryCacheContextType = {
@@ -15,6 +17,8 @@ export type MemoryCacheContextType = {
     refreshPlaylist: (id: string) => Promise<PlaylistWithSongs | void>;
     refreshAlbums: () => Promise<AlbumID3[] | void>;
     refreshAlbum: (id: string) => Promise<AlbumWithSongsID3 | void>;
+    refreshArtists: () => Promise<ArtistID3[] | void>;
+    refreshSongs: () => Promise<Child[] | void>;
     clear: () => void;
 }
 
@@ -24,11 +28,15 @@ export const initialCache: MemoryCacheContextType = {
         playlists: {},
         allAlbums: [],
         albums: {},
+        allArtists: [],
+        allSongs: [],
     },
     refreshPlaylists: async () => { },
     refreshPlaylist: async () => { },
     refreshAlbums: async () => { },
     refreshAlbum: async () => { },
+    refreshArtists: async () => { },
+    refreshSongs: async () => { },
     clear: () => { },
 };
 
@@ -91,6 +99,31 @@ export default function MemoryCacheProvider({ children }: { children?: React.Rea
         return album;
     }, [api, server.url]);
 
+    const refreshArtists = useCallback(async () => {
+        if (!api) return;
+        console.log('[MemoryCache] Fetching artists');
+
+        const artistsRes = await api.get('/getArtists');
+        const artistsData = artistsRes.data?.['subsonic-response']?.artists as ArtistsID3;
+        if (!artistsData?.index) return;
+
+        const artists: ArtistID3[] = artistsData.index.flatMap(idx => idx.artist ?? []);
+        setCache(c => ({ ...c, allArtists: artists }));
+        return artists;
+    }, [api, server.url]);
+
+    const refreshSongs = useCallback(async () => {
+        if (!api) return;
+        console.log('[MemoryCache] Fetching songs');
+
+        const songsRes = await api.get('/getRandomSongs', { params: { size: 500 } });
+        const songs = songsRes.data?.['subsonic-response']?.randomSongs?.song as Child[];
+        if (!songs) return;
+
+        setCache(c => ({ ...c, allSongs: songs }));
+        return songs;
+    }, [api, server.url]);
+
     // Prefetch the data
     useEffect(() => {
         if (!api) return;
@@ -101,7 +134,7 @@ export default function MemoryCacheProvider({ children }: { children?: React.Rea
     }, [api, server.url, refreshPlaylists, refreshAlbums]);
 
     return (
-        <MemoryCacheContext.Provider value={{ cache, clear, refreshPlaylists, refreshPlaylist, refreshAlbums, refreshAlbum }}>
+        <MemoryCacheContext.Provider value={{ cache, clear, refreshPlaylists, refreshPlaylist, refreshAlbums, refreshAlbum, refreshArtists, refreshSongs }}>
             {children}
         </MemoryCacheContext.Provider>
     )
