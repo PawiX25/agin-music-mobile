@@ -7,7 +7,7 @@ import { TTagTab } from '@/lib/components/TagTabs/TagTab';
 import { IconDisc, IconLayoutGrid, IconLayoutList, IconMicrophone2, IconMusic, IconPlaylist, IconPlus } from '@tabler/icons-react-native';
 import React, { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { AlbumsTab, PlaylistsTab } from '@/lib/components/MediaLibrary';
+import { AlbumsTab, ArtistsTab, PlaylistsTab, SongsTab } from '@/lib/components/MediaLibrary';
 import { SheetManager } from 'react-native-actions-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -69,7 +69,9 @@ export default function Library() {
             <TagTabs data={tabs} tab={tab} onChange={setTab} />
             <LibLayout.Provider value={layout}>
                 {tab == 'playlists' && <PlaylistsTab />}
+                {tab == 'artists' && <ArtistsTab />}
                 {tab == 'albums' && <AlbumsTab />}
+                {tab == 'songs' && <SongsTab />}
             </LibLayout.Provider>
         </Container>
     )

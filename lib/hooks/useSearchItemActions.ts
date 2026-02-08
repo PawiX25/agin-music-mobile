@@ -24,6 +24,8 @@ export function useSearchItemActions() {
             await queue.playTrackNow(item.id);
         } else if (item.type === 'album') {
             router.push({ pathname: '/albums/[id]', params: { id: item.id } });
+        } else if (item.type === 'artist') {
+            router.push({ pathname: '/artists/[id]', params: { id: item.id } });
         }
     }, []);
 
