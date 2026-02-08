@@ -78,7 +78,10 @@ function TrackSheet({ sheetId, payload }: SheetProps<'track'>) {
                 icon={IconMicrophone2}
                 label='Go to Artist'
                 onPress={() => {
-                    SheetManager.hide(sheetId);
+                    if (data?.artistId) {
+                        router.push({ pathname: '/artists/[id]', params: { id: data.artistId } });
+                        SheetManager.hide(sheetId, { payload: { shouldCloseSheet: true } });
+                    }
                 }}
             />
             {payload?.context != 'album' && <SheetOption

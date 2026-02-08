@@ -51,22 +51,29 @@ export default function Artist() {
         refreshArtist();
     }, [refreshArtist]));
 
-    const allSongs = useMemo(() => {
-        return data?.album?.flatMap(a => a.song ?? []) ?? [];
-    }, [data?.album]);
+    const playAction = useCallback(async (shuffle: boolean) => {
+        if (!api || !data?.album?.length) return;
 
-    const playAction = useCallback((shuffle: boolean) => {
+        const albumPromises = data.album.map(async (album) => {
+            const res = await api.get('/getAlbum', { params: { id: album.id } });
+            return res.data?.['subsonic-response']?.album?.song ?? [];
+        });
+
+        const albumSongs = await Promise.all(albumPromises);
+        const allSongs = albumSongs.flat();
+
         if (!allSongs.length) return;
+
         queue.replace(allSongs, {
             initialIndex: 0,
             source: {
                 source: 'artist',
-                sourceId: data?.id,
-                sourceName: data?.name,
+                sourceId: data.id,
+                sourceName: data.name,
             },
             shuffle,
         });
-    }, [data, allSongs, queue.replace]);
+    }, [api, data, queue.replace]);
 
     const styles = useMemo(() => StyleSheet.create({
         header: {
