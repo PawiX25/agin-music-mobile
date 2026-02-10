@@ -7,9 +7,9 @@ import { useQueue } from '@/lib/hooks';
 import { useColors } from '@/lib/hooks/useColors';
 import { useCoverBuilder } from '@/lib/hooks/useCoverBuilder';
 import { secondsToTimecode } from '@/lib/util';
-import { IconPlayerPauseFilled, IconPlayerPlayFilled, IconPlayerSkipBackFilled, IconPlayerSkipForwardFilled } from '@tabler/icons-react-native';
+import { IconPlayerPauseFilled, IconPlayerPlayFilled, IconPlayerSkipBackFilled, IconPlayerSkipForwardFilled, IconBug } from '@tabler/icons-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TrackPlayer, { State, usePlaybackState, useProgress } from 'react-native-track-player';
@@ -82,10 +82,38 @@ export default function MainTab() {
             justifyContent: 'center',
             alignContent: 'center',
             gap: 70,
+        },
+        debugPanel: {
+            backgroundColor: colors.card,
+            borderRadius: 8,
+            padding: 10,
+            marginBottom: 10,
+            borderWidth: 1,
+            borderColor: colors.tint + '40',
         }
-    }), [insets.bottom, height]);
+    }), [insets.bottom, height, colors]);
 
     const buffering = state === State.Connecting;
+
+    const [showDebug, setShowDebug] = useState(false);
+
+    const debugInfo = useMemo(() => {
+        if (!nowPlaying.id) return null;
+        return {
+            id: nowPlaying.id,
+            title: nowPlaying.title,
+            artist: nowPlaying.artist,
+            album: nowPlaying.album,
+            originalFormat: nowPlaying.suffix ?? 'unknown',
+            transcodedFormat: nowPlaying.transcodedSuffix ?? 'none',
+            contentType: nowPlaying.contentType ?? 'unknown',
+            transcodedContentType: nowPlaying.transcodedContentType ?? 'none',
+            bitRate: nowPlaying.bitRate ? `${nowPlaying.bitRate} kbps` : 'unknown',
+            duration: nowPlaying.duration ? `${nowPlaying.duration}s` : 'unknown',
+            path: nowPlaying.path ?? 'unknown',
+            size: nowPlaying.size ? `${(nowPlaying.size / 1024 / 1024).toFixed(2)} MB` : 'unknown',
+        };
+    }, [nowPlaying]);
 
     return (
         <View style={styles.container}>
@@ -106,7 +134,30 @@ export default function MainTab() {
                         </Pressable>
                     </View>
                     <NowPlayingActions />
+                    <ActionIcon
+                        icon={IconBug}
+                        size={16}
+                        variant={showDebug ? 'secondaryFilled' : 'secondary'}
+                        onPress={() => setShowDebug(!showDebug)}
+                    />
                 </View>
+                {showDebug && debugInfo && (
+                    <View style={styles.debugPanel}>
+                        <ScrollView style={{ maxHeight: 120 }}>
+                            <Title size={10} fontFamily="Poppins-Bold" color={colors.tint}>DEBUG INFO</Title>
+                            <Title size={9} color={colors.text[2]} fontFamily="Poppins-Regular">
+                                {`ID: ${debugInfo.id}\n`}
+                                {`Original: ${debugInfo.originalFormat.toUpperCase()} → ${debugInfo.transcodedFormat.toUpperCase() || 'no transcode'}\n`}
+                                {`Content-Type: ${debugInfo.contentType}\n`}
+                                {`Transcoded Type: ${debugInfo.transcodedContentType}\n`}
+                                {`Bitrate: ${debugInfo.bitRate}\n`}
+                                {`Duration: ${debugInfo.duration}\n`}
+                                {`Size: ${debugInfo.size}\n`}
+                                {`Path: ${debugInfo.path}`}
+                            </Title>
+                        </ScrollView>
+                    </View>
+                )}
                 <NowPlayingSlider
                     minimumValue={sliderMin}
                     maximumValue={sliderMax}
