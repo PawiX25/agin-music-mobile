@@ -1,7 +1,7 @@
 import { Child } from '@lib/types';
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 import { useCache } from '@lib/hooks/useCache';
-import { useApi, useApiHelpers, useCoverBuilder, useServer, useSubsonicParams } from '@lib/hooks';
+import { useApi, useApiHelpers, useCoverBuilder, useServer, useSubsonicParams, useSetting } from '@lib/hooks';
 import qs from 'qs';
 import { SheetManager } from 'react-native-actions-sheet';
 import * as Haptics from 'expo-haptics';
@@ -110,6 +110,8 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     const cover = useCoverBuilder();
     const { position } = useProgress();
     const helpers = useApiHelpers();
+    const maxBitRate = useSetting('streaming.maxBitRate') as string | undefined;
+    const streamingFormat = useSetting('streaming.format') as string | undefined;
 
     useEffect(() => {
         (async () => {
@@ -120,7 +122,16 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         })();
     }, [api, nowPlaying]);
 
-    const generateMediaUrl = useCallback((options: StreamOptions) => `${server.url}/rest/stream?${qs.stringify({ ...params, ...options })}`, [params, server.url]);
+    const generateMediaUrl = useCallback((options: StreamOptions) => {
+        const streamParams: StreamOptions = { ...options };
+        if (maxBitRate && maxBitRate !== '0') {
+            streamParams.maxBitRate = maxBitRate;
+        }
+        if (streamingFormat && streamingFormat !== 'raw') {
+            streamParams.format = streamingFormat;
+        }
+        return `${server.url}/rest/stream?${qs.stringify({ ...params, ...streamParams })}`;
+    }, [params, server.url, maxBitRate, streamingFormat]);
 
     const convertToTrack = useCallback((data: Child): Track => ({
         url: generateMediaUrl({ id: data.id }),
