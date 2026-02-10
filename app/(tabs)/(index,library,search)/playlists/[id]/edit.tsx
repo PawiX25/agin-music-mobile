@@ -4,7 +4,7 @@ import Title from '@/lib/components/Title';
 import Cover from '@/lib/components/Cover';
 import Button from '@/lib/components/Button';
 import { Input } from '@/lib/components/Input';
-import { useApi, useColors, useCoverBuilder, useMemoryCache, useTabsHeight } from '@lib/hooks';
+import { useApi, useColors, useCoverBuilder, useMemoryCache } from '@lib/hooks';
 import { useFocusEffect, useLocalSearchParams, router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Keyboard, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -14,6 +14,7 @@ import { Child, SearchResult3 } from '@lib/types';
 import { IconCircleMinus, IconCirclePlus, IconMenu, IconPlus, IconSearch, IconX } from '@tabler/icons-react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function EditPlaylist() {
     const { id } = useLocalSearchParams();
@@ -21,7 +22,7 @@ export default function EditPlaylist() {
     const cover = useCoverBuilder();
     const colors = useColors();
     const api = useApi();
-    const [tabsHeight] = useTabsHeight();
+    const insets = useSafeAreaInsets();
 
     const data = useMemo(() => cache.cache.playlists[id as string], [cache.cache.playlists, id]);
 
@@ -31,6 +32,7 @@ export default function EditPlaylist() {
     const [searching, setSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<Child[]>([]);
+    const [recommendations, setRecommendations] = useState<Child[]>([]);
     const searchRef = useRef<TextInput>(null);
     const initialized = useRef(false);
 
@@ -81,11 +83,19 @@ export default function EditPlaylist() {
         });
     }, [cover]);
 
-    const openSearch = useCallback(() => {
+    const openSearch = useCallback(async () => {
         setSearching(true);
         setSearchQuery('');
         setTimeout(() => searchRef.current?.focus(), 100);
-    }, []);
+        // Fetch random songs as recommendations
+        if (api && recommendations.length === 0) {
+            try {
+                const res = await api.get('/getRandomSongs', { params: { size: 20 } });
+                const random = res.data?.['subsonic-response']?.randomSongs?.song as Child[];
+                if (random) setRecommendations(random);
+            } catch {}
+        }
+    }, [api, recommendations.length]);
 
     const closeSearch = useCallback(() => {
         setSearching(false);
@@ -186,18 +196,20 @@ export default function EditPlaylist() {
             overflow: 'hidden',
         },
         footer: {
-            paddingVertical: 15,
+            paddingTop: 10,
+            paddingBottom: insets.bottom + 10,
             paddingHorizontal: 20,
             gap: 8,
         },
         searchOverlay: {
             flex: 1,
+            marginTop: 10,
         },
         searchHeader: {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
-            marginBottom: 10,
+            marginBottom: 15,
         },
         searchInput: {
             flex: 1,
@@ -311,7 +323,7 @@ export default function EditPlaylist() {
                                 renderItem={renderItem}
                                 onDragBegin={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)}
                                 onDragEnd={({ data }) => setSongs(data)}
-                                ListFooterComponent={<View style={{ height: tabsHeight + 80 }} />}
+                                ListFooterComponent={<View style={{ height: 10 }} />}
                             />
                         </GestureHandlerRootView>
                     </>
@@ -332,16 +344,30 @@ export default function EditPlaylist() {
                             </TouchableOpacity>
                         </View>
                         {searchQuery.length < 2 ? (
-                            <View style={styles.emptySearch}>
-                                <Title size={14} fontFamily="Poppins-Regular" color={colors.text[1]}>Type to search for songs</Title>
-                            </View>
+                            <>
+                                {recommendations.length > 0 && (
+                                    <Title size={15} fontFamily="Poppins-SemiBold" style={{ marginBottom: 8 }}>Recommended</Title>
+                                )}
+                                <FlatList
+                                    data={recommendations}
+                                    keyExtractor={(item) => `rec-${item.id}`}
+                                    renderItem={renderSearchItem}
+                                    keyboardShouldPersistTaps="handled"
+                                    ListFooterComponent={<View style={{ height: insets.bottom + 20 }} />}
+                                    ListEmptyComponent={
+                                        <View style={styles.emptySearch}>
+                                            <Title size={14} fontFamily="Poppins-Regular" color={colors.text[1]}>Loading recommendations...</Title>
+                                        </View>
+                                    }
+                                />
+                            </>
                         ) : (
                             <FlatList
                                 data={searchResults}
                                 keyExtractor={(item) => item.id}
                                 renderItem={renderSearchItem}
                                 keyboardShouldPersistTaps="handled"
-                                ListFooterComponent={<View style={{ height: tabsHeight + 20 }} />}
+                                ListFooterComponent={<View style={{ height: insets.bottom + 20 }} />}
                                 ListEmptyComponent={
                                     <View style={styles.emptySearch}>
                                         <Title size={14} fontFamily="Poppins-Regular" color={colors.text[1]}>No results found</Title>
