@@ -3,20 +3,32 @@ import Header from '@lib/components/Header';
 import Setting, { SettingSelectOption } from '@lib/components/Setting';
 import SettingsSection from '@lib/components/SettingsSection';
 import { useCache, useMemoryCache } from '@lib/hooks';
-import { IconCircleCheck, IconDownload, IconMobiledata, IconWifi } from '@tabler/icons-react-native';
+import { IconCircleCheck, IconFileMusic, IconVolume } from '@tabler/icons-react-native';
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SheetManager } from 'react-native-actions-sheet';
 import * as Haptics from 'expo-haptics';
 import showToast from '@lib/showToast';
 
-const qualityLevels: SettingSelectOption[] = [
-    { label: 'Normal', description: '128kbps', value: '128kbps' },
-    { label: 'High', description: '256kbps', value: '256kbps' },
-    { label: 'Lossless', description: 'ALAC, 24-bit/48 kHz', value: 'lossless' },
+const maxBitRateOptions: SettingSelectOption[] = [
+    { label: 'Original', description: 'No transcoding', value: '0', shortLabel: 'Original' },
+    { label: '320 kbps', description: 'Highest quality transcode', value: '320', shortLabel: '320k' },
+    { label: '256 kbps', description: 'High quality', value: '256', shortLabel: '256k' },
+    { label: '192 kbps', description: 'Good quality', value: '192', shortLabel: '192k' },
+    { label: '128 kbps', description: 'Standard quality', value: '128', shortLabel: '128k' },
+    { label: '96 kbps', description: 'Low quality', value: '96', shortLabel: '96k' },
+    { label: '64 kbps', description: 'Minimum quality', value: '64', shortLabel: '64k' },
 ];
 
-export type SettingId = 'audioQuality.wifi' | 'audioQuality.celluar' | 'audioQuality.download' | 'audioQuality.atmos' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar';
+const formatOptions: SettingSelectOption[] = [
+    { label: 'Original', description: 'Server default format', value: 'raw', shortLabel: 'Original' },
+    { label: 'MP3', description: 'Most compatible', value: 'mp3', shortLabel: 'MP3' },
+    { label: 'Opus', description: 'Modern, efficient codec', value: 'opus', shortLabel: 'Opus' },
+    { label: 'AAC', description: 'Good quality, widely supported', value: 'aac', shortLabel: 'AAC' },
+    { label: 'OGG Vorbis', description: 'Open source format', value: 'ogg', shortLabel: 'OGG' },
+];
+
+export type SettingId = 'streaming.maxBitRate' | 'streaming.format' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar';
 
 export default function Settings() {
     const cache = useCache();
@@ -36,37 +48,25 @@ export default function Settings() {
             <Header title="Settings" withBackIcon withAvatar={false} titleSize={20} />
             <ScrollView>
                 <View style={styles.settings}>
-                    {/* <SettingsSection label='Audio Quality' />
+                    <SettingsSection label='Streaming Quality' />
                     <Setting
-                        id='audioQuality.wifi'
+                        id='streaming.maxBitRate'
                         type='select'
-                        label='Wi-Fi Streaming'
-                        description='Maximum quality on Wi-Fi'
-                        icon={IconWifi}
-                        options={qualityLevels}
+                        label='Max Bitrate'
+                        description='Maximum streaming bitrate (requires server transcoding)'
+                        icon={IconVolume}
+                        defaultValue='0'
+                        options={maxBitRateOptions}
                     />
                     <Setting
-                        id='audioQuality.celluar'
+                        id='streaming.format'
                         type='select'
-                        label='Cellular Streaming'
-                        description='Maximum quality on cellular data'
-                        icon={IconMobiledata}
-                        options={qualityLevels}
+                        label='Preferred Format'
+                        description='Preferred audio format for transcoding'
+                        icon={IconFileMusic}
+                        defaultValue='raw'
+                        options={formatOptions}
                     />
-                    <Setting
-                        id='audioQuality.download'
-                        type='select'
-                        label='Download Quality'
-                        description='Maximum quality for downloaded music'
-                        icon={IconDownload}
-                        options={qualityLevels}
-                    />
-                    <Setting
-                        id='audioQuality.atmos'
-                        type='switch'
-                        label='Dolby Atmos'
-                        description='Enable Dolby Atmos when available'
-                    /> */}
                     <SettingsSection label='Storage' />
                     <Setting
                         id='storage.clearCache'
