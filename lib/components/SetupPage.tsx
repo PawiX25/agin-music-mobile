@@ -1,7 +1,7 @@
 import { useColors } from '@lib/hooks';
 import { Icon } from '@tabler/icons-react-native';
 import React, { useMemo } from 'react';
-import { KeyboardAvoidingView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import Title from './Title';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,11 +31,7 @@ export function SetupPageContent({ icon: Icon, title, description, children, act
             flex: 1,
         },
         bottomActions: {
-            position: 'absolute',
-            left: 15,
-            right: 15,
-            bottom: 15,
-            zIndex: 1,
+            marginTop: 15,
         },
     }), []);
 
@@ -67,8 +63,8 @@ export function SetupPage({ ...props }: SetupPageProps) {
         container: {
             padding: 25,
             paddingTop: 45,
-            position: 'relative',
             flex: 1,
+            justifyContent: 'flex-end',
         },
         main: {
             flex: 1,
@@ -78,7 +74,10 @@ export function SetupPage({ ...props }: SetupPageProps) {
 
     return (
         <SafeAreaView style={styles.main}>
-            <KeyboardAvoidingView style={styles.container} behavior='height'>
+            <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
                 <SetupPageContent {...props} />
             </KeyboardAvoidingView>
         </SafeAreaView>
