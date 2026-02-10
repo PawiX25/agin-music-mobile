@@ -133,13 +133,15 @@ export default function MainTab() {
                             <Title size={16} color={colors.text[1]} fontFamily="Poppins-Regular" numberOfLines={1}>{nowPlaying.artist}</Title>
                         </Pressable>
                     </View>
-                    <NowPlayingActions />
-                    <ActionIcon
-                        icon={IconBug}
-                        size={16}
-                        variant={showDebug ? 'secondaryFilled' : 'secondary'}
-                        onPress={() => setShowDebug(!showDebug)}
-                    />
+                    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                        <NowPlayingActions />
+                        <ActionIcon
+                            icon={IconBug}
+                            size={16}
+                            variant={showDebug ? 'secondaryFilled' : 'secondary'}
+                            onPress={() => setShowDebug(!showDebug)}
+                        />
+                    </View>
                 </View>
                 {showDebug && debugInfo && (
                     <View style={styles.debugPanel}>
