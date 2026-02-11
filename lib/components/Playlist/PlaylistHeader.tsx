@@ -1,4 +1,4 @@
-import { useColors, useCoverBuilder, useQueue } from '@lib/hooks';
+import { useColors, useCoverBuilder, useDownloads, useQueue } from '@lib/hooks';
 import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Cover from '../Cover';
@@ -10,8 +10,6 @@ import React from 'react';
 import ActionIcon from '../ActionIcon';
 import { IconArrowsShuffle, IconDownload, IconPlayerPlayFilled } from '@tabler/icons-react-native';
 import { PlaylistBackground } from './PlaylistBackground';
-import * as Haptics from 'expo-haptics';
-import { SheetManager } from 'react-native-actions-sheet';
 
 export type PlaylistHeaderProps = {
     playlist?: PlaylistWithSongs;
@@ -23,6 +21,7 @@ export function PlaylistHeader({ playlist, album, onTitlePress }: PlaylistHeader
     const colors = useColors();
     const cover = useCoverBuilder();
     const queue = useQueue();
+    const downloads = useDownloads();
 
     const insets = useSafeAreaInsets();
 
@@ -79,15 +78,10 @@ export function PlaylistHeader({ playlist, album, onTitlePress }: PlaylistHeader
             </View>
             <View style={styles.actions}>
                 <ActionIcon icon={IconDownload} variant='subtleFilled' size={20} extraSize={24} onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                    await SheetManager.show('confirm', {
-                        payload: {
-                            title: 'Sorry!',
-                            message: 'Downloads feature will be avalibale soon. Stay tuned!',
-                            withCancel: false,
-                            confirmText: 'OK',
-                        }
-                    });
+                    const tracks = playlist?.entry ?? album?.song;
+                    const id = playlist?.id ?? album?.id;
+                    if (!tracks || !id) return;
+                    await downloads.downloadPlaylist(id, tracks);
                 }} />
                 <ActionIcon icon={IconPlayerPlayFilled} variant='primary' isFilled size={24} extraSize={32} onPress={() => playAction(false)} />
                 <ActionIcon icon={IconArrowsShuffle} variant='subtleFilled' size={20} extraSize={24} onPress={() => playAction(true)} />

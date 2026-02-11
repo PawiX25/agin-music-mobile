@@ -2,14 +2,13 @@ import { StyledActionSheet } from '@lib/components/StyledActionSheet';
 import { Platform } from 'react-native';
 import { SheetManager, SheetProps } from 'react-native-actions-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApiHelpers, useCoverBuilder, useMemoryCache, usePins, useQueue, useSetting } from '@lib/hooks';
+import { useApiHelpers, useCoverBuilder, useDownloads, useMemoryCache, usePins, useQueue, useSetting } from '@lib/hooks';
 import { useEffect } from 'react';
 import SheetTrackHeader from '@lib/components/sheet/SheetTrackHeader';
 import SheetOption from '@lib/components/sheet/SheetOption';
 import { IconArrowsShuffle, IconCirclePlus, IconCopy, IconDownload, IconMicrophone2, IconPin, IconPinnedOff, IconPlayerPlay } from '@tabler/icons-react-native';
 import * as Clipboard from 'expo-clipboard';
 import showToast from '@lib/showToast';
-import * as Haptics from 'expo-haptics';
 
 function AlbumSheet({ sheetId, payload }: SheetProps<'album'>) {
     const insets = useSafeAreaInsets();
@@ -20,6 +19,7 @@ function AlbumSheet({ sheetId, payload }: SheetProps<'album'>) {
 
     const copyIdEnabled = useSetting('developer.copyId');
 
+    const downloads = useDownloads();
     const pins = usePins();
     const isPinned = pins.isPinned(payload?.id ?? '');
 
@@ -97,20 +97,13 @@ function AlbumSheet({ sheetId, payload }: SheetProps<'album'>) {
                     SheetManager.hide(sheetId);
                 }}
             />
-            {payload?.context != 'album' && <SheetOption
+            {payload?.context != 'album' && data?.song && <SheetOption
                 icon={IconDownload}
-                label='Download'
+                label='Download Album'
                 onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                    await SheetManager.show('confirm', {
-                        payload: {
-                            title: 'Sorry!',
-                            message: 'Downloads feature will be avalibale soon. Stay tuned!',
-                            withCancel: false,
-                            confirmText: 'OK',
-                        }
-                    });
+                    if (!data?.song) return;
                     SheetManager.hide(sheetId);
+                    await downloads.downloadPlaylist(data.id, data.song);
                 }}
             />}
             <SheetOption

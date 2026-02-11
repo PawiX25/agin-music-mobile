@@ -23,6 +23,7 @@ import { toastConfig } from '@lib/toastConfig';
 import ToastWrapper from '@lib/components/ToastWrapper';
 import SearchHistoryProvider from '@lib/providers/SearchHistoryProvider';
 import PinsProvider from '@lib/providers/PinsProvider';
+import DownloadProvider from '@lib/providers/DownloadProvider';
 import { registerWidgetTaskHandler } from 'react-native-android-widget';
 import { widgetTaskHandler } from '@lib/widget-task-handler';
 
@@ -84,6 +85,7 @@ export default function RootLayout() {
             <ServerProvider>
               <SearchHistoryProvider>
                 <QueueProvider>
+                  <DownloadProvider>
                   <MemoryCacheProvider>
                     <PinsProvider>
                       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -100,6 +102,7 @@ export default function RootLayout() {
                       </GestureHandlerRootView>
                     </PinsProvider>
                   </MemoryCacheProvider>
+                  </DownloadProvider>
                 </QueueProvider>
               </SearchHistoryProvider>
             </ServerProvider>
