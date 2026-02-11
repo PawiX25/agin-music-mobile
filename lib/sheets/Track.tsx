@@ -2,12 +2,12 @@ import { StyledActionSheet } from '@lib/components/StyledActionSheet';
 import { Platform } from 'react-native';
 import { SheetManager, SheetProps } from 'react-native-actions-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApiHelpers, useCache, useCoverBuilder, usePins, useQueue, useSetting } from '@lib/hooks';
+import { useApiHelpers, useCache, useCoverBuilder, useDownloads, usePins, useQueue, useSetting } from '@lib/hooks';
 import { useEffect, useState } from 'react';
 import { Child } from '@lib/types';
 import SheetTrackHeader from '@lib/components/sheet/SheetTrackHeader';
 import SheetOption from '@lib/components/sheet/SheetOption';
-import { IconCircleMinus, IconCirclePlus, IconCopy, IconDisc, IconDownload, IconMicrophone2, IconPin, IconPinnedOff, IconPlayerTrackNext, IconPlaylistAdd } from '@tabler/icons-react-native';
+import { IconCircleMinus, IconCirclePlus, IconCopy, IconDisc, IconDownload, IconMicrophone2, IconPin, IconPinnedOff, IconPlayerTrackNext, IconPlaylistAdd, IconTrash } from '@tabler/icons-react-native';
 import * as Clipboard from 'expo-clipboard';
 import showToast from '@lib/showToast';
 import { router } from 'expo-router';
@@ -22,8 +22,10 @@ function TrackSheet({ sheetId, payload }: SheetProps<'track'>) {
 
     const copyIdEnabled = useSetting('developer.copyId');
 
+    const downloads = useDownloads();
     const pins = usePins();
     const isPinned = pins.isPinned(payload?.id ?? '');
+    const isDownloaded = downloads.isTrackDownloaded(payload?.id ?? '');
 
     const [data, setData] = useState<Child | undefined>(payload?.data);
 
@@ -92,22 +94,24 @@ function TrackSheet({ sheetId, payload }: SheetProps<'track'>) {
                     SheetManager.hide(sheetId, { payload: { shouldCloseSheet: true } });
                 }}
             />}
-            {payload?.context != 'nowPlaying' && <SheetOption
+            {payload?.context != 'nowPlaying' && (isDownloaded ? <SheetOption
+                icon={IconTrash}
+                label='Remove Download'
+                variant='destructive'
+                onPress={async () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                    await downloads.deleteTrack(payload?.id ?? '');
+                    SheetManager.hide(sheetId);
+                }}
+            /> : <SheetOption
                 icon={IconDownload}
                 label='Download'
                 onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                    await SheetManager.show('confirm', {
-                        payload: {
-                            title: 'Sorry!',
-                            message: 'Downloads feature will be avalibale soon. Stay tuned!',
-                            withCancel: false,
-                            confirmText: 'OK',
-                        }
-                    });
+                    if (!data) return;
                     SheetManager.hide(sheetId);
+                    await downloads.downloadTrack(data);
                 }}
-            />}
+            />)}
             <SheetOption
                 icon={isPinned ? IconPinnedOff : IconPin}
                 label={isPinned ? 'Unpin Track' : 'Pin Track'}

@@ -1,14 +1,13 @@
 import { StyledActionSheet } from '@lib/components/StyledActionSheet';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { SheetManager, SheetProps } from 'react-native-actions-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApiHelpers, useCoverBuilder, useMemoryCache, usePins, useQueue, useSetting } from '@lib/hooks';
+import { useApiHelpers, useCoverBuilder, useDownloads, useMemoryCache, usePins, useQueue, useSetting } from '@lib/hooks';
 import { useEffect } from 'react';
 import SheetTrackHeader from '@lib/components/sheet/SheetTrackHeader';
 import SheetOption from '@lib/components/sheet/SheetOption';
 import { IconArrowsShuffle, IconCirclePlus, IconCopy, IconDownload, IconPencil, IconPin, IconPinnedOff, IconPlayerPlay, IconTrash } from '@tabler/icons-react-native';
 import { formatDistanceToNow } from 'date-fns';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import showToast from '@lib/showToast';
@@ -22,6 +21,7 @@ function PlaylistSheet({ sheetId, payload }: SheetProps<'playlist'>) {
 
     const copyIdEnabled = useSetting('developer.copyId');
 
+    const downloads = useDownloads();
     const pins = usePins();
     const isPinned = pins.isPinned(payload?.id ?? '');
 
@@ -91,20 +91,13 @@ function PlaylistSheet({ sheetId, payload }: SheetProps<'playlist'>) {
                     router.push({ pathname: '/playlists/[id]/edit', params: { id: payload?.id ?? '' } });
                 }}
             />
-            {payload?.context != 'playlist' && <SheetOption
+            {payload?.context != 'playlist' && data?.entry && <SheetOption
                 icon={IconDownload}
-                label='Download'
+                label='Download Playlist'
                 onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                    await SheetManager.show('confirm', {
-                        payload: {
-                            title: 'Sorry!',
-                            message: 'Downloads feature will be avalibale soon. Stay tuned!',
-                            withCancel: false,
-                            confirmText: 'OK',
-                        }
-                    });
+                    if (!data?.entry) return;
                     SheetManager.hide(sheetId);
+                    await downloads.downloadPlaylist(data.id, data.entry);
                 }}
             />}
             <SheetOption
