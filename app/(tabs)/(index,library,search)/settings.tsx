@@ -170,7 +170,7 @@ function EQSection() {
                         <EQBandSlider
                             key={index}
                             label={EQ_BAND_LABELS[index]}
-                            gain={band.gain}
+                            gain={band.gainDb}
                             onGainChange={(value) => handleBandChange(index, value)}
                             colors={colors}
                         />
