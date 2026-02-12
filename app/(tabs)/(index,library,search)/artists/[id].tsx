@@ -1,10 +1,11 @@
 import Container from '@/lib/components/Container';
 import Header from '@/lib/components/Header';
-import { useApi, useColors, useCoverBuilder, useQueue, useTabsHeight } from '@lib/hooks';
+import { useApi, useColors, useCoverBuilder, useDownloads, useQueue, useTabsHeight } from '@lib/hooks';
 import ActionIcon from '@/lib/components/ActionIcon';
 import { LibSize, LibLayout, LibSeparators } from '@/lib/components/MediaLibraryList';
 import MediaLibItem from '@/lib/components/MediaLibraryList/Item';
-import { IconArrowsShuffle, IconDots, IconPlayerPlayFilled } from '@tabler/icons-react-native';
+import { IconArrowsShuffle, IconDots, IconDownload, IconPlayerPlayFilled } from '@tabler/icons-react-native';
+import { SheetManager } from 'react-native-actions-sheet';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
@@ -22,6 +23,7 @@ export default function Artist() {
     const api = useApi();
     const cover = useCoverBuilder();
     const queue = useQueue();
+    const downloads = useDownloads();
     const colors = useColors();
     const [tabsHeight] = useTabsHeight();
     const listRef = useAnimatedRef<FlatList>();
@@ -50,6 +52,34 @@ export default function Artist() {
     useFocusEffect(useCallback(() => {
         refreshArtist();
     }, [refreshArtist]));
+
+    const showMenu = useCallback(() => {
+        if (!data) return;
+        Haptics.selectionAsync();
+        SheetManager.show('artist', {
+            payload: {
+                id: data.id,
+                data,
+                context: 'artist',
+            }
+        });
+    }, [data]);
+
+    const fetchAllSongs = useCallback(async () => {
+        if (!api || !data?.album?.length) return [];
+        const albumPromises = data.album.map(async (album) => {
+            const res = await api.get('/getAlbum', { params: { id: album.id } });
+            return res.data?.['subsonic-response']?.album?.song ?? [];
+        });
+        const albumSongs = await Promise.all(albumPromises);
+        return albumSongs.flat();
+    }, [api, data]);
+
+    const downloadAll = useCallback(async () => {
+        const allSongs = await fetchAllSongs();
+        if (!allSongs.length || !data) return;
+        await downloads.downloadPlaylist(data.id, allSongs);
+    }, [fetchAllSongs, data, downloads.downloadPlaylist]);
 
     const playAction = useCallback(async (shuffle: boolean) => {
         if (!api || !data?.album?.length) return;
@@ -137,10 +167,11 @@ export default function Artist() {
                 <View style={styles.actions}>
                     <ActionIcon icon={IconPlayerPlayFilled} variant='primary' isFilled size={24} extraSize={32} onPress={() => playAction(false)} />
                     <ActionIcon icon={IconArrowsShuffle} variant='subtleFilled' size={20} extraSize={24} onPress={() => playAction(true)} />
+                    <ActionIcon icon={IconDownload} variant='subtleFilled' size={20} extraSize={24} onPress={downloadAll} />
                 </View>
             </View>
         );
-    }, [data, cover, colors, styles, playAction]);
+    }, [data, cover, colors, styles, playAction, downloadAll]);
 
     return (
         <Container includeTop={false} includeBottom={false}>
@@ -154,7 +185,7 @@ export default function Artist() {
                 titleSize={18}
                 initialHideTitle
                 rightSection={<>
-                    <ActionIcon icon={IconDots} size={16} variant='secondary' />
+                    <ActionIcon icon={IconDots} size={16} variant='secondary' onPress={showMenu} />
                 </>} />
             <Animated.View style={[{ flex: 1 }, containerStyle]}>
                 <LibLayout.Provider value="list">

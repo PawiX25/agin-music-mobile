@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCache, useCoverBuilder, useServer, useSubsonicParams } from '@lib/hooks';
 import {
     DownloadManager,
@@ -23,6 +23,8 @@ export type DownloadContextType = {
     deleteTrack: (trackId: string) => Promise<void>;
     deleteAll: () => Promise<void>;
     cancelDownload: (downloadId: string) => Promise<void>;
+    pauseDownload: (downloadId: string) => Promise<void>;
+    resumeDownload: (downloadId: string) => Promise<void>;
     retryDownload: (downloadId: string) => Promise<void>;
 
     isTrackDownloaded: (trackId: string) => boolean;
@@ -46,6 +48,8 @@ const initial: DownloadContextType = {
     deleteTrack: async () => { },
     deleteAll: async () => { },
     cancelDownload: async () => { },
+    pauseDownload: async () => { },
+    resumeDownload: async () => { },
     retryDownload: async () => { },
     isTrackDownloaded: () => false,
     getTrackProgress: () => undefined,
@@ -202,6 +206,13 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
         return downloadingMeta.get(trackId);
     }, [downloadingMeta]);
 
+    const filteredActiveDownloads = useMemo(() =>
+        progress.progressList.filter(p =>
+            p.state === 'pending' || p.state === 'downloading' || p.state === 'paused'
+        ),
+        [progress.progressList]
+    );
+
     return (
         <DownloadContext.Provider value={{
             downloadTrack,
@@ -210,12 +221,14 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             deleteTrack,
             deleteAll,
             cancelDownload: actions.cancelDownload,
+            pauseDownload: actions.pauseDownload,
+            resumeDownload: actions.resumeDownload,
             retryDownload: actions.retryDownload,
             isTrackDownloaded: downloaded.isTrackDownloaded,
             getTrackProgress: progress.getProgress,
             getDownloadingMeta,
             downloadedTracks: downloaded.downloadedTracks,
-            activeDownloads: progress.progressList,
+            activeDownloads: filteredActiveDownloads,
             refreshDownloaded: downloaded.refresh,
             isDownloading: progress.isDownloading,
             storageInfo: storage.storageInfo,

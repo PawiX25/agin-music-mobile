@@ -5,7 +5,7 @@ import Title from "@lib/components/Title";
 import Cover from "@lib/components/Cover";
 import ActionIcon from "@lib/components/ActionIcon";
 import { useColors, useCoverBuilder, useDownloads, useQueue, useTabsHeight } from "@lib/hooks";
-import { IconCircleArrowDown, IconTrash, IconX } from "@tabler/icons-react-native";
+import { IconCircleArrowDown, IconPlayerPause, IconPlayerPlay, IconTrash, IconX } from "@tabler/icons-react-native";
 import { useCallback, useMemo } from "react";
 import { Pressable, SectionList, StyleSheet, View } from "react-native";
 import { SheetManager } from "react-native-actions-sheet";
@@ -31,6 +31,13 @@ function ActiveDownloadItem({ item, colors, downloads }: { item: ActiveDownloadR
     const percentage = Math.round(item.data.progress * 100);
     const meta = item.meta;
     const coverArt = meta?.coverArt;
+    const isPaused = item.data.state === 'paused';
+
+    const statusText = item.data.state === 'pending'
+        ? 'Waiting...'
+        : isPaused
+            ? `Paused \u2022 ${percentage}%`
+            : `${percentage}% \u2022 ${formatBytes(item.data.bytesDownloaded)} / ${formatBytes(item.data.totalBytes)}`;
 
     return (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}>
@@ -45,12 +52,25 @@ function ActiveDownloadItem({ item, colors, downloads }: { item: ActiveDownloadR
                 <Title size={14} numberOfLines={1}>{meta?.title ?? item.data.trackId}</Title>
                 <Title size={12} color={colors.text[1]} fontFamily="Poppins-Regular" numberOfLines={1}>{meta?.artist ?? 'Downloading...'}</Title>
                 <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.border[0], marginTop: 4, overflow: 'hidden' }}>
-                    <View style={{ height: '100%', width: `${percentage}%`, backgroundColor: colors.forcedTint, borderRadius: 2 }} />
+                    <View style={{ height: '100%', width: `${percentage}%`, backgroundColor: isPaused ? colors.text[1] : colors.forcedTint, borderRadius: 2 }} />
                 </View>
                 <Title size={11} color={colors.text[1]} fontFamily="Poppins-Regular" style={{ marginTop: 2 }}>
-                    {item.data.state === 'pending' ? 'Waiting...' : `${percentage}% \u2022 ${formatBytes(item.data.bytesDownloaded)} / ${formatBytes(item.data.totalBytes)}`}
+                    {statusText}
                 </Title>
             </View>
+            <ActionIcon
+                icon={isPaused ? IconPlayerPlay : IconPlayerPause}
+                size={14}
+                variant="secondary"
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (isPaused) {
+                        downloads.resumeDownload(item.data.downloadId);
+                    } else {
+                        downloads.pauseDownload(item.data.downloadId);
+                    }
+                }}
+            />
             <ActionIcon
                 icon={IconX}
                 size={14}
