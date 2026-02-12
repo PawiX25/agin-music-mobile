@@ -2,10 +2,11 @@ import { registerSheet, SheetDefinition } from 'react-native-actions-sheet';
 import PlaybackSheet from './playback';
 import ConfirmSheet from './Confirm';
 import NewPlaylsitSheet from './NewPlaylist';
-import { AlbumID3, Child, Playlist, PlaylistWithSongs } from '@lib/types';
+import { AlbumID3, ArtistID3, Child, Playlist, PlaylistWithSongs } from '@lib/types';
 import TrackSheet from './Track';
 import PlaylistSheet from './Playlist';
 import AlbumSheet from './Album';
+import ArtistSheet from './Artist';
 import UserMenuSheet from './UserMenu';
 import { SettingSelectOption } from '@lib/components/Setting';
 import { Icon } from '@tabler/icons-react-native';
@@ -18,6 +19,7 @@ registerSheet('newPlaylist', NewPlaylsitSheet);
 registerSheet('track', TrackSheet);
 registerSheet('playlist', PlaylistSheet);
 registerSheet('album', AlbumSheet);
+registerSheet('artist', ArtistSheet);
 registerSheet('userMenu', UserMenuSheet);
 registerSheet('settingSelect', SettingSelectSheet);
 registerSheet('addToPlaylist', AddToPlaylistSheet);
@@ -75,6 +77,13 @@ declare module 'react-native-actions-sheet' {
                 data?: AlbumID3;
                 context?: 'home' | 'search' | 'album';
                 hasPlayed?: boolean;
+            },
+        }>;
+        'artist': SheetDefinition<{
+            payload: {
+                id: string;
+                data?: ArtistID3;
+                context?: 'home' | 'search' | 'artist';
             },
         }>;
         'settingSelect': SheetDefinition<{

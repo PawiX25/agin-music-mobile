@@ -8,7 +8,7 @@ import { useCallback } from 'react';
 export function ArtistsTab() {
     const cache = useMemoryCache();
     const cover = useCoverBuilder();
-    const { press } = useHomeItemActions();
+    const { press, longPress } = useHomeItemActions();
 
     const layout = useContext(LibLayout);
 
@@ -33,6 +33,7 @@ export function ArtistsTab() {
         <MediaLibraryList
             data={data}
             onItemPress={press}
+            onItemLongPress={longPress}
             layout={layout}
         />
     )
