@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import Title from './Title';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useColors } from '@/lib/hooks/useColors';
@@ -45,11 +46,11 @@ function RenderItem(item: Child) {
     }), [colors.secondaryBackground]);
     return (
         <View style={styles.metadata}>
-            <Image
-                source={{ uri: cover.generateUrl(item.coverArt ?? '', { size: 128 }), cacheKey: item.coverArt ? `${item.coverArt}-128x128` : 'empty-128x128' }}
+            {(item.coverArt || item.id) ? <Image
+                source={{ uri: cover.generateUrl(item.coverArt || item.id, { size: 128 }), cacheKey: `${item.coverArt || item.id}-128x128` }}
                 style={styles.image}
                 cachePolicy="disk"
-            />
+            /> : <View style={styles.image} />}
             <View style={styles.textContainer}>
                 <Title size={14} fontFamily="Poppins-SemiBold" numberOfLines={1}>
                     {isEmpty ? 'Not Playing' : item.title}

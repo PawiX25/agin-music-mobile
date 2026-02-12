@@ -1,13 +1,13 @@
 import { Icon, IconProps } from '@tabler/icons-react-native';
 import React, { useEffect, useMemo } from 'react';
-import { ColorValue, Pressable, PressableProps, StyleSheet, ViewStyle } from 'react-native';
+import { ColorValue, StyleSheet, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useColors } from '../hooks/useColors';
 
 export type ActionIconVariant = 'subtle' | 'subtleFilled' | 'primary' | 'secondary' | 'secondaryTransparent' | 'secondaryFilled';
 
-export type ActionIconProps = PressableProps & {
+export type ActionIconProps = {
     icon: Icon;
     size?: number;
     iconProps?: IconProps;
@@ -17,6 +17,7 @@ export type ActionIconProps = PressableProps & {
     variant?: ActionIconVariant;
     disabled?: boolean;
     extraSize?: number;
+    onPress?: (e: any) => void;
 }
 
 type VariantConfig = {
@@ -27,7 +28,7 @@ type VariantConfig = {
     extraSize: number;
 }
 
-const ActionIcon = ({ icon: Icon, size = 24, isFilled = false, stroke, iconColor, iconProps, variant = 'subtle', disabled = false, onPress, extraSize, ...props }: ActionIconProps) => {
+const ActionIcon = ({ icon: Icon, size = 24, isFilled = false, stroke, iconColor, iconProps, variant = 'subtle', disabled = false, onPress, extraSize }: ActionIconProps) => {
     const colors = useColors();
 
     const variantStyles = useMemo<Record<ActionIconVariant, VariantConfig>>(() => ({
@@ -101,6 +102,12 @@ const ActionIcon = ({ icon: Icon, size = 24, isFilled = false, stroke, iconColor
             opacity.value = withSpring(0.5);
             backgroundColor.value = withSpring(variantStyles[variant].tapBackgroundColor);
         })
+        .onEnd((e, success) => {
+            "worklet";
+            if (success && onPress && !disabled) {
+                runOnJS(onPress)(e);
+            }
+        })
         .onFinalize(() => {
             "worklet";
             scaleDownAnimation.value = withSpring(1);
@@ -118,11 +125,9 @@ const ActionIcon = ({ icon: Icon, size = 24, isFilled = false, stroke, iconColor
 
     return (
         <GestureDetector gesture={scaleHandler}>
-            <Pressable onPress={disabled ? undefined : onPress} {...props}>
-                <Animated.View style={[styles.container, animatedStyle]}>
-                    <Icon color={iconCol} fill={isFilled ? iconCol : 'transparent'} size={size} stroke={stroke ?? iconCol} {...iconProps} />
-                </Animated.View>
-            </Pressable>
+            <Animated.View style={[styles.container, animatedStyle]}>
+                <Icon color={iconCol} fill={isFilled ? iconCol : 'transparent'} size={size} stroke={stroke ?? iconCol} {...iconProps} />
+            </Animated.View>
         </GestureDetector>
     )
 }
