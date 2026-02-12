@@ -5,7 +5,7 @@ import { useApi, useApiHelpers, useCoverBuilder, useServer, useSubsonicParams, u
 import qs from 'qs';
 import { SheetManager } from 'react-native-actions-sheet';
 import * as Haptics from 'expo-haptics';
-import { TrackPlayer, PlayerQueue, useOnPlaybackProgressChange, TrackItem } from 'react-native-nitro-player';
+import { TrackPlayer, PlayerQueue, useOnPlaybackProgressChange, useOnChangeTrack, TrackItem } from 'react-native-nitro-player';
 import showToast from '@lib/showToast';
 import { IconExclamationCircle } from '@tabler/icons-react-native';
 import { shuffleArray } from '@lib/util';
@@ -102,6 +102,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     const [source, setSource] = useState<QueueSource>(initialSource);
     const [repeatMode, setRepeatMode] = useState<RepeatModeValue>('off');
     const playlistIdRef = useRef<string>('agin-queue');
+    const trackChildMapRef = useRef<Map<string, Child>>(new Map());
 
     const canGoBackward = nowPlaying.id != '';
     const canGoForward = activeIndex < (queue.length ?? 0) - 1;
@@ -116,9 +117,10 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     const streamingFormat = useSetting('streaming.format') as string | undefined;
 
     const progressRef = useRef<number>(0);
-    useOnPlaybackProgressChange(({ position }) => {
-        progressRef.current = position;
-    });
+    const { position: playbackPosition } = useOnPlaybackProgressChange();
+    useEffect(() => {
+        progressRef.current = playbackPosition;
+    }, [playbackPosition]);
 
     useEffect(() => {
         (async () => {
@@ -147,25 +149,45 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         album: data.album ?? '',
         duration: data.duration ?? 0,
         url: generateMediaUrl({ id: data.id }),
-        artwork: cover.generateUrl(data.id),
+        artwork: cover.generateUrl(data.coverArt || data.id),
         extraPayload: { _child: data },
         _child: data,
     }), [generateMediaUrl, cover.generateUrl]);
 
-    const updateNowPlaying = useCallback(async () => {
-        console.log('updating...');
+    const loadTracks = useCallback((tracks: TQueueItem[]) => {
+        try { PlayerQueue.deletePlaylist(playlistIdRef.current); } catch (e) {}
+        const newId = PlayerQueue.createPlaylist('agin-queue');
+        playlistIdRef.current = newId;
+        if (tracks.length > 0) {
+            PlayerQueue.addTracksToPlaylist(newId, tracks);
+        }
+        PlayerQueue.loadPlaylist(newId);
+        tracks.forEach(t => trackChildMapRef.current.set(t._child.id, t._child));
+    }, []);
 
+    const updateNowPlaying = useCallback(async () => {
         try {
-            const state = TrackPlayer.getState();
-            const currentQueue = TrackPlayer.getActualQueue();
+            const state = await TrackPlayer.getState();
+            const currentQueue = await TrackPlayer.getActualQueue();
             if (!currentQueue || currentQueue.length === 0) return;
 
             const currentIndex = state?.currentIndex ?? 0;
-            const track = currentQueue[currentIndex] as TQueueItem | undefined;
+            const track = currentQueue[currentIndex];
             if (!track) return;
 
-            const child = track._child ?? track.extraPayload?._child;
-            if (child) setNowPlaying(child);
+            const child = trackChildMapRef.current.get(track.id);
+            if (child) {
+                setNowPlaying(child);
+            } else {
+                setNowPlaying({
+                    id: track.id,
+                    isDir: false,
+                    title: track.title,
+                    artist: track.artist,
+                    album: track.album,
+                    duration: track.duration,
+                });
+            }
         } catch (e) {
             console.log('updateNowPlaying error', e);
         }
@@ -173,9 +195,19 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
 
     const updateQueue = useCallback(async () => {
         try {
-            const currentQueue = TrackPlayer.getActualQueue();
-            console.log('updq', { queue: currentQueue });
-            setQueue((currentQueue ?? []) as TQueueItem[]);
+            const currentQueue = await TrackPlayer.getActualQueue();
+            const enrichedQueue = (currentQueue ?? []).map(track => ({
+                ...track,
+                _child: trackChildMapRef.current.get(track.id) ?? {
+                    id: track.id,
+                    isDir: false,
+                    title: track.title,
+                    artist: track.artist,
+                    album: track.album,
+                    duration: track.duration,
+                },
+            })) as TQueueItem[];
+            setQueue(enrichedQueue);
         } catch (e) {
             console.log('updateQueue error', e);
         }
@@ -183,7 +215,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
 
     const updateActive = useCallback(async () => {
         try {
-            const state = TrackPlayer.getState();
+            const state = await TrackPlayer.getState();
             const currentIndex = state?.currentIndex ?? 0;
             setActiveIndex(currentIndex);
         } catch (e) {
@@ -197,39 +229,34 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         updateActive();
     }, []);
 
+    const { track: changedTrack } = useOnChangeTrack();
+
     useEffect(() => {
-        const unsubscribe = TrackPlayer.onChangeTrack(() => {
+        if (changedTrack) {
             updateNowPlaying();
             updateActive();
-        });
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
-    }, [updateNowPlaying, updateActive]);
+        }
+    }, [changedTrack, updateNowPlaying, updateActive]);
 
     const modifyQueue = useCallback(async (tracks: TQueueItem[]): Promise<void> => {
         try {
-            const currentQueue = TrackPlayer.getActualQueue() as TQueueItem[];
-            const state = TrackPlayer.getState();
+            const currentQueue = await TrackPlayer.getActualQueue();
+            const state = await TrackPlayer.getState();
             const currentlyPlaying = state?.currentIndex ?? null;
 
             if (currentlyPlaying === null || !currentQueue || currentQueue.length === 0) {
-                // No track playing, replace entire queue
-                PlayerQueue.createPlaylist(playlistIdRef.current, tracks);
-                PlayerQueue.loadPlaylist(playlistIdRef.current);
+                loadTracks(tracks);
                 await updateQueue();
                 await updateActive();
                 return;
             }
 
             const currentlyPlayingMetadata = currentQueue[currentlyPlaying];
-            const newCurrentIndex = tracks.findIndex(track => track._child.id === currentlyPlayingMetadata._child?.id);
+            const newCurrentIndex = tracks.findIndex(track => track.id === currentlyPlayingMetadata?.id);
 
-            // Rebuild the playlist with the new track order
-            PlayerQueue.createPlaylist(playlistIdRef.current, tracks);
-            PlayerQueue.loadPlaylist(playlistIdRef.current);
+            loadTracks(tracks);
             if (newCurrentIndex >= 0) {
-                TrackPlayer.skipToIndex(newCurrentIndex);
+                await TrackPlayer.skipToIndex(newCurrentIndex);
             }
 
             await updateQueue();
@@ -237,34 +264,37 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         } catch (e) {
             console.log('modifyQueue error', e);
         }
-    }, []);
+    }, [loadTracks]);
 
     const add = useCallback(async (id: string) => {
         const data = await cache.fetchChild(id);
         if (!data) return false;
 
         const trackItem = convertToTrackItem(data);
-        const currentQueue = TrackPlayer.getActualQueue();
+        trackChildMapRef.current.set(data.id, data);
+        const currentQueue = await TrackPlayer.getActualQueue();
 
         if (!currentQueue || currentQueue.length === 0) {
-            PlayerQueue.createPlaylist(playlistIdRef.current, [trackItem]);
-            PlayerQueue.loadPlaylist(playlistIdRef.current);
+            loadTracks([trackItem]);
             TrackPlayer.play();
+            setNowPlaying(data);
         } else {
-            TrackPlayer.addToUpNext([trackItem]);
+            PlayerQueue.addTrackToPlaylist(playlistIdRef.current, trackItem);
         }
 
         await updateQueue();
         await updateActive();
         return true;
-    }, [cache, convertToTrackItem]);
+    }, [cache, convertToTrackItem, loadTracks]);
 
     const playNext = useCallback(async (id: string) => {
         const data = await cache.fetchChild(id);
         if (!data) return false;
 
         const trackItem = convertToTrackItem(data);
-        TrackPlayer.playNext([trackItem]);
+        trackChildMapRef.current.set(data.id, data);
+        PlayerQueue.addTrackToPlaylist(playlistIdRef.current, trackItem);
+        await TrackPlayer.playNext(trackItem.id);
 
         await updateQueue();
         await updateActive();
@@ -284,14 +314,14 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         }
 
         const trackItem = convertToTrackItem(data);
-        PlayerQueue.createPlaylist(playlistIdRef.current, [trackItem]);
-        PlayerQueue.loadPlaylist(playlistIdRef.current);
+        loadTracks([trackItem]);
         TrackPlayer.play();
 
+        setNowPlaying(data);
         await updateQueue();
         await updateActive();
         return true;
-    }, [cache, convertToTrackItem]);
+    }, [cache, convertToTrackItem, loadTracks]);
 
     const replace = useCallback(async (items: Child[], options?: QueueReplaceOptions) => {
         let itemsCopy = [...items];
@@ -299,29 +329,27 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         if (options?.source) setSource(options.source);
 
         const tracks = itemsCopy.map(convertToTrackItem);
-        PlayerQueue.createPlaylist(playlistIdRef.current, tracks);
-        PlayerQueue.loadPlaylist(playlistIdRef.current);
+        loadTracks(tracks);
 
         const initialIndex = options?.initialIndex ?? 0;
         if (initialIndex > 0) {
-            TrackPlayer.skipToIndex(initialIndex);
+            await TrackPlayer.skipToIndex(initialIndex);
         }
         TrackPlayer.play();
 
+        setNowPlaying(itemsCopy[initialIndex]);
         await updateQueue();
         await updateActive();
-    }, [convertToTrackItem]);
+    }, [convertToTrackItem, loadTracks]);
 
     const clear = useCallback(async () => {
         TrackPlayer.pause();
-        PlayerQueue.createPlaylist(playlistIdRef.current, []);
-        PlayerQueue.loadPlaylist(playlistIdRef.current);
+        loadTracks([]);
 
         setQueue([]);
-        await updateQueue();
-        await updateActive();
         setNowPlaying(initialQueueContext.nowPlaying);
-    }, []);
+        trackChildMapRef.current.clear();
+    }, [loadTracks]);
 
     const clearConfirm = useCallback(async (options?: ClearConfirmOptions) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -346,29 +374,31 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         return true;
     }, [clear]);
 
-    const jumpTo = useCallback((index: number) => {
+    const jumpTo = useCallback(async (index: number) => {
         console.log('jumping to', index);
 
-        TrackPlayer.skipToIndex(index);
-        updateActive();
-    }, [queue]);
+        await TrackPlayer.skipToIndex(index);
+        await updateActive();
+        await updateNowPlaying();
+    }, [updateActive, updateNowPlaying]);
 
     const skipForward = useCallback(async () => {
         await TrackPlayer.skipToNext();
-        updateActive();
-    }, []);
+        await updateActive();
+        await updateNowPlaying();
+    }, [updateActive, updateNowPlaying]);
 
     const skipBackward = useCallback(async () => {
         const position = progressRef.current;
-        console.log('skipping backward', position);
 
         if (position > 5) {
             await TrackPlayer.seek(0);
         } else {
             await TrackPlayer.skipToPrevious();
             await updateActive();
+            await updateNowPlaying();
         }
-    }, [jumpTo]);
+    }, [updateActive, updateNowPlaying]);
 
     const changeRepeatMode = useCallback(async (mode: RepeatModeValue) => {
         setRepeatMode(mode);

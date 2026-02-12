@@ -34,20 +34,17 @@ export default function MainTab() {
 
     const [position, setPosition] = useState(0);
     const [duration, setDuration] = useState(0);
-    useOnPlaybackProgressChange(({ position: pos, totalDuration }) => {
-        if (!seeking) {
-            setPosition(pos);
-            setDuration(totalDuration);
-        }
-    });
+    const { position: progressPosition, totalDuration: progressDuration } = useOnPlaybackProgressChange();
     const { state } = useOnPlaybackStateChange();
 
     useEffect(() => {
         if (seeking) return;
+        setPosition(progressPosition);
+        setDuration(progressDuration);
         sliderMin.value = 0;
-        sliderMax.value = duration;
-        progress.value = position;
-    }, [position, duration, seeking]);
+        sliderMax.value = progressDuration;
+        progress.value = progressPosition;
+    }, [progressPosition, progressDuration, seeking]);
 
     const styles = useMemo(() => StyleSheet.create({
         container: {

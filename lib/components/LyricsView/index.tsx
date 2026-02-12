@@ -34,8 +34,8 @@ export default function SycnedLyricsView({ lyrics }: LyricsViewProps) {
         const interval = setInterval(async () => {
             if (isLocked.current) return console.log('locked :(');
 
-            const playerState = TrackPlayer.getState();
-            const position = playerState?.position ?? 0;
+            const playerState = await TrackPlayer.getState();
+            const position = playerState?.currentPosition ?? 0;
             let activeLine = lyrics?.line.findIndex(line => {
                 if (!line.start) return false;
                 return line.start >= (position * 1000) - 150;
