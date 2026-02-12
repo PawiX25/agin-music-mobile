@@ -4,7 +4,7 @@ import React, { useCallback } from 'react';
 import { MappedResult } from '@/app/(tabs)/(search)/search';
 import * as Haptics from 'expo-haptics';
 import { SheetManager } from 'react-native-actions-sheet';
-import { AlbumID3, Child } from '@lib/types';
+import { AlbumID3, ArtistID3, Child } from '@lib/types';
 import { TMediaLibItem } from './MediaLibraryList/Item';
 import { Keyboard } from 'react-native';
 
@@ -25,7 +25,13 @@ export default function SearchRightSection({ item }: SearchRightSectionProps) {
                 }
             });
         } else if (item.type == 'artist') {
-            // TODO: Show artist context menu
+            SheetManager.show('artist', {
+                payload: {
+                    id: item.id,
+                    data: 'fullData' in item ? item.fullData as ArtistID3 : undefined,
+                    context: 'search',
+                }
+            });
         } else if (item.type == 'track') {
             SheetManager.show('track', {
                 payload: {

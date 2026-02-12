@@ -26,7 +26,7 @@ export type QueueReplaceOptions = {
 export type TQueueItem = TrackItem & { _child: Child };
 
 export type QueueSource = {
-    source: 'playlist' | 'album' | 'none';
+    source: 'playlist' | 'album' | 'artist' | 'none';
     sourceId?: string;
     sourceName?: string;
 }

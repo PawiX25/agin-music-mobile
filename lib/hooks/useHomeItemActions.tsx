@@ -43,6 +43,13 @@ export function useHomeItemActions() {
                     context: 'home',
                 }
             });
+        } else if (item.type === 'artist') {
+            await SheetManager.show('artist', {
+                payload: {
+                    id: item.id,
+                    context: 'home',
+                }
+            });
         }
     }, []);
 

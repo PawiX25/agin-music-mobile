@@ -1,4 +1,4 @@
-import { TouchableOpacity, View } from 'react-native';
+import { Pressable, TouchableOpacity, View } from 'react-native';
 import { TouchableOpacityProps } from 'react-native-gesture-handler';
 import { LibLayout } from '.';
 import { useContext } from 'react';
@@ -36,9 +36,15 @@ function MediaLibItem({ id, title, subtitle, coverUri, coverCacheKey, rightSecti
         marginLeft: index % 3 != 0 ? 5 : 0,
     }
 
+    const wrappedRightSection = rightSection ? (
+        <Pressable onPress={(e) => e.stopPropagation()} onStartShouldSetResponder={() => true}>
+            {rightSection}
+        </Pressable>
+    ) : undefined;
+
     return (
         <TouchableOpacity activeOpacity={.8} style={[style, gridStyles, compactGridStyles]} {...props}>
-            <ItemRenderer id={id} title={title} subtitle={subtitle} coverUri={coverUri} coverCacheKey={coverCacheKey} rightSection={rightSection} isAlbumEntry={isAlbumEntry} trackNumber={trackNumber} type={type} icon={icon} />
+            <ItemRenderer id={id} title={title} subtitle={subtitle} coverUri={coverUri} coverCacheKey={coverCacheKey} rightSection={wrappedRightSection} isAlbumEntry={isAlbumEntry} trackNumber={trackNumber} type={type} icon={icon} />
         </TouchableOpacity>
     )
 }
