@@ -26,8 +26,8 @@ export default function FullscreenMessage({ icon: Icon, label, description }: Fu
 
     return (
         <View style={styles.container}>
-            <View style={styles.icon}>
-                <Icon size={32} color={colors.text[1]} />
+            <View style={[styles.icon, { opacity: 0.5 }]}>
+                <Icon size={32} color={colors.text[0]} />
             </View>
             <Title size={16} align='center'>{label}</Title>
             <Title size={12} align='center' fontFamily='Poppins-Regular' color={colors.text[1]}>{description}</Title>
