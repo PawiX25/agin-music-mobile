@@ -73,7 +73,7 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
 
     const actions = useDownloadActions();
     const downloaded = useDownloadedTracks();
-    const progress = useDownloadProgress({ activeOnly: true });
+    const progress = useDownloadProgress({});
     const storage = useDownloadStorage();
 
     const [downloadingMeta, setDownloadingMeta] = useState<Map<string, Child>>(new Map());
@@ -171,15 +171,22 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
     }, [cache.fetchChild, downloadTrack]);
 
     const downloadPlaylist = useCallback(async (playlistId: string, tracks: Child[]) => {
-        const trackItems = tracks.map(convertToTrackItem);
-        tracks.forEach(t => {
+        const tracksToDownload = tracks.filter(t =>
+            !DownloadManager.isTrackDownloaded(t.id) && !DownloadManager.isDownloading(t.id)
+        );
+        if (tracksToDownload.length === 0) {
+            showToast({ title: 'Already Downloaded', subtitle: `All ${tracks.length} tracks` });
+            return;
+        }
+        const trackItems = tracksToDownload.map(convertToTrackItem);
+        tracksToDownload.forEach(t => {
             setDownloadingMeta(prev => new Map(prev).set(t.id, t));
         });
         try {
             await actions.downloadPlaylist(playlistId, trackItems);
-            showToast({ title: 'Downloading', subtitle: `${tracks.length} tracks`, icon: IconDownload });
+            showToast({ title: 'Downloading', subtitle: `${tracksToDownload.length} tracks`, icon: IconDownload });
         } catch (e) {
-            tracks.forEach(t => {
+            tracksToDownload.forEach(t => {
                 setDownloadingMeta(prev => {
                     const next = new Map(prev);
                     next.delete(t.id);
@@ -206,11 +213,17 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
         return downloadingMeta.get(trackId);
     }, [downloadingMeta]);
 
+    const downloadedTrackIds = useMemo(() =>
+        new Set(downloaded.downloadedTracks.map(t => t.trackId)),
+        [downloaded.downloadedTracks]
+    );
+
     const filteredActiveDownloads = useMemo(() =>
         progress.progressList.filter(p =>
-            p.state === 'pending' || p.state === 'downloading' || p.state === 'paused'
+            (p.state === 'pending' || p.state === 'downloading' || p.state === 'paused') &&
+            !downloadedTrackIds.has(p.trackId)
         ),
-        [progress.progressList]
+        [progress.progressList, downloadedTrackIds]
     );
 
     return (
