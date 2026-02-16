@@ -37,7 +37,7 @@ export type ServerContextType = {
     server: Server;
     serverAuth: ServerAuth;
     discoverServer: (url: string) => Promise<DiscoverServerResult> | void;
-    saveAndTestPasswordCredentials: (username: string, password: string, serverOverride?: string) => Promise<boolean>;
+    saveAndTestPasswordCredentials: (username: string, password: string, serverOverride?: string, authMethodOverride?: Server['authMethod']) => Promise<boolean>;
     isLoading: boolean;
     logOut: () => Promise<void>;
 }
@@ -106,10 +106,11 @@ export default function ServerProvider({ children }: { children?: React.ReactNod
     useEffect(() => {
         (async () => {
             if (!server.auth.password) return;
+            if (server.authMethod === 'password') return;
             const { salt, hash } = await generateSubsonicToken(server.auth.password);
             setServerAuth({ salt, hash });
         })();
-    }, [server.auth.password]);
+    }, [server.auth.password, server.authMethod]);
 
     const discoverServer = useCallback(async (url: string): Promise<DiscoverServerResult> => {
         let correctUrl = '';
@@ -182,10 +183,36 @@ export default function ServerProvider({ children }: { children?: React.ReactNod
         }
     }, []);
 
-    const saveAndTestPasswordCredentials = useCallback(async (username: string, password: string, serverOverride?: string) => {
+    const saveAndTestPasswordCredentials = useCallback(async (username: string, password: string, serverOverride?: string, authMethodOverride?: Server['authMethod']) => {
         // TODO: Add error handling
         const url = serverOverride ? serverOverride : server.url;
+        const authMethod = authMethodOverride ?? server.authMethod;
         console.log(url);
+
+        if (authMethod === 'password') {
+            try {
+                const rawRes = await axios.get(`${url}/rest/ping`, {
+                    params: {
+                        c: `${config.clientName}/${config.clientVersion}`,
+                        f: 'json',
+                        v: config.protocolVersion,
+                        u: username,
+                        p: password,
+                    }
+                });
+                const res = rawRes.data['subsonic-response'] as BaseResponse;
+                if (res.status != 'ok') return false;
+                console.log('ok');
+
+                setServer(s => ({ ...s, auth: { ...s.auth, username, password }, authMethod: 'password' }));
+            } catch (error) {
+                console.log('data', (error as any).response.data);
+                console.log('legacy auth error', error);
+                return false;
+            }
+            return true;
+        }
+
         const { salt, hash } = await generateSubsonicToken(password);
         console.log('TESTING1', username, password, salt, hash, url);
 

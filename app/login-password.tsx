@@ -1,17 +1,20 @@
 import Button from '@lib/components/Button';
 import { Input } from '@lib/components/Input';
 import { SetupPage } from '@lib/components/SetupPage';
-import { useServer } from '@lib/hooks';
-import { IconKey, IconMusic, IconUser } from '@tabler/icons-react-native';
+import Title from '@lib/components/Title';
+import { useColors, useServer } from '@lib/hooks';
+import { IconKey, IconUser } from '@tabler/icons-react-native';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Switch, TextInput, TouchableHighlight, View } from 'react-native';
 import { SheetManager } from 'react-native-actions-sheet';
 
 export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [useLegacyAuth, setUseLegacyAuth] = useState(false);
     const [loading, setLoading] = useState(false);
+    const colors = useColors();
 
     const server = useServer();
 
@@ -21,7 +24,8 @@ export default function Login() {
         if (username === '' || password === '') return;
         setLoading(true);
 
-        const success = await server.saveAndTestPasswordCredentials(username, password);
+        const authMethod = useLegacyAuth ? 'password' : undefined;
+        const success = await server.saveAndTestPasswordCredentials(username, password, undefined, authMethod);
         if (!success) {
             setLoading(false);
             await SheetManager.show('confirm', {
@@ -37,12 +41,12 @@ export default function Login() {
 
         setLoading(false);
         router.replace('/');
-    }, [username, password, server.saveAndTestPasswordCredentials]);
+    }, [username, password, server.saveAndTestPasswordCredentials, useLegacyAuth]);
 
     const styles = useMemo(() => ({
         container: {
             gap: 10,
-        }
+        },
     }), []);
 
     return (
@@ -84,6 +88,30 @@ export default function Login() {
                     submitBehavior='submit'
                     enablesReturnKeyAutomatically
                 />
+                <TouchableHighlight
+                    onPress={() => setUseLegacyAuth(!useLegacyAuth)}
+                    underlayColor={colors.secondaryBackground}
+                >
+                    <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingHorizontal: 20,
+                        paddingVertical: 10,
+                    }}>
+                        <View style={{ flex: 1, marginRight: 10 }}>
+                            <Title size={14}>Legacy Authentication</Title>
+                            <Title size={12} color={colors.text[1]} fontFamily="Poppins-Regular">Use plain password for Nextcloud Music</Title>
+                        </View>
+                        <Switch
+                            trackColor={{ false: colors.segmentedControlBackground, true: colors.forcedTint }}
+                            thumbColor={colors.text[0]}
+                            ios_backgroundColor={colors.segmentedControlBackground}
+                            value={useLegacyAuth}
+                            onValueChange={setUseLegacyAuth}
+                        />
+                    </View>
+                </TouchableHighlight>
             </View>
         </SetupPage>
     )

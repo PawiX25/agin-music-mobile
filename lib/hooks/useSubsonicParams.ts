@@ -11,10 +11,13 @@ export type SubsonicParams = {
     u: string;
 
     /** Token (salted MD5 hash of the password) */
-    t: string;
+    t?: string;
 
     /** Salt used in the token */
-    s: string;
+    s?: string;
+
+    /** Plain password (for legacy authentication) */
+    p?: string;
 
     /** Protocol version */
     v: string;
@@ -26,16 +29,28 @@ export type SubsonicParams = {
 export function useSubsonicParams(): SubsonicParams {
     const { server, serverAuth } = useServer();
 
-    const params = useMemo(() => ({
-        c: `${config.clientName}/${config.clientVersion}`,
-        f: 'json',
-        v: config.protocolVersion,
-        u: server.auth.username ?? '',
-        t: serverAuth.hash ?? '',
-        s: serverAuth.salt ?? '',
-    }), [server.url, server.auth.username, server.auth.password, serverAuth.hash, serverAuth.salt]);
+    const params = useMemo(() => {
+        if (server.authMethod === 'password') {
+            return {
+                c: `${config.clientName}/${config.clientVersion}`,
+                f: 'json',
+                v: config.protocolVersion,
+                u: server.auth.username ?? '',
+                p: server.auth.password ?? '',
+            };
+        }
 
-    if (!serverAuth) return null;
+        return {
+            c: `${config.clientName}/${config.clientVersion}`,
+            f: 'json',
+            v: config.protocolVersion,
+            u: server.auth.username ?? '',
+            t: serverAuth.hash ?? '',
+            s: serverAuth.salt ?? '',
+        };
+    }, [server.url, server.auth.username, server.auth.password, server.authMethod, serverAuth.hash, serverAuth.salt]);
+
+    if (!serverAuth && server.authMethod !== 'password') return null;
 
     return params;
 }
