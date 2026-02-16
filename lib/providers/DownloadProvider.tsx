@@ -5,7 +5,6 @@ import {
     TrackItem,
     useDownloadActions,
     useDownloadedTracks,
-    useDownloadProgress,
     useDownloadStorage,
     DownloadedTrack,
     DownloadProgress,
@@ -65,6 +64,8 @@ const initial: DownloadContextType = {
 
 export const DownloadContext = createContext<DownloadContextType>(initial);
 
+const PROGRESS_FLUSH_MS = 500;
+
 export default function DownloadProvider({ children }: { children?: React.ReactNode }) {
     const { server } = useServer();
     const params = useSubsonicParams();
@@ -73,13 +74,34 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
 
     const actions = useDownloadActions();
     const downloaded = useDownloadedTracks();
-    const progress = useDownloadProgress();
     const storage = useDownloadStorage();
 
     const [downloadingMeta, setDownloadingMeta] = useState<Map<string, Child>>(new Map());
+    const [progressMap, setProgressMap] = useState<Map<string, DownloadProgress>>(new Map());
+
     const initializedRef = useRef(false);
     const metaFetchInFlightRef = useRef<Set<string>>(new Set());
     const metaFetchUnavailableRef = useRef<Set<string>>(new Set());
+    const progressBufferRef = useRef<Map<string, DownloadProgress>>(new Map());
+    const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const flushProgressBuffer = useCallback(() => {
+        flushTimerRef.current = null;
+        setProgressMap(prev => {
+            const buffer = progressBufferRef.current;
+            if (buffer.size === 0) return prev;
+            const next = new Map(prev);
+            buffer.forEach((p, trackId) => {
+                if (p.state === 'completed' || p.state === 'cancelled' || p.state === 'failed') {
+                    next.delete(trackId);
+                } else {
+                    next.set(trackId, p);
+                }
+            });
+            buffer.clear();
+            return next;
+        });
+    }, []);
 
     useEffect(() => {
         if (initializedRef.current) return;
@@ -99,8 +121,109 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             return;
         }
 
+        // Initialize progress from active downloads
+        try {
+            const active = DownloadManager.getActiveDownloads();
+            const initialMap = new Map<string, DownloadProgress>();
+            active.forEach(task => {
+                const p = task.progress;
+                if (p.state === 'pending' || p.state === 'downloading' || p.state === 'paused') {
+                    initialMap.set(task.trackId, p);
+                }
+            });
+            if (initialMap.size > 0) {
+                setProgressMap(initialMap);
+            }
+        } catch { }
+
+        // Progress events: buffer and flush on interval
+        DownloadManager.onDownloadProgress((progress) => {
+            progressBufferRef.current.set(progress.trackId, progress);
+            if (!flushTimerRef.current) {
+                flushTimerRef.current = setTimeout(flushProgressBuffer, PROGRESS_FLUSH_MS);
+            }
+        });
+
+        // State changes: update immediately for responsive UI
+        DownloadManager.onDownloadStateChange((_downloadId, trackId, state, error) => {
+            if (state === 'pending') {
+                setProgressMap(prev => {
+                    if (prev.has(trackId)) return prev;
+                    const next = new Map(prev);
+                    next.set(trackId, {
+                        trackId,
+                        downloadId: _downloadId,
+                        bytesDownloaded: 0,
+                        totalBytes: 0,
+                        progress: 0,
+                        state: 'pending',
+                    });
+                    return next;
+                });
+            }
+
+            if (state === 'downloading') {
+                setProgressMap(prev => {
+                    const existing = prev.get(trackId);
+                    if (existing?.state === 'downloading') return prev;
+                    const next = new Map(prev);
+                    next.set(trackId, { ...(existing ?? { trackId, downloadId: _downloadId, bytesDownloaded: 0, totalBytes: 0, progress: 0 }), state: 'downloading' });
+                    return next;
+                });
+            }
+
+            if (state === 'paused') {
+                progressBufferRef.current.delete(trackId);
+                setProgressMap(prev => {
+                    const existing = prev.get(trackId);
+                    if (!existing || existing.state === 'paused') return prev;
+                    const next = new Map(prev);
+                    next.set(trackId, { ...existing, state: 'paused' });
+                    return next;
+                });
+            }
+
+            if (state === 'failed' || state === 'cancelled' || state === 'completed') {
+                progressBufferRef.current.delete(trackId);
+                setProgressMap(prev => {
+                    if (!prev.has(trackId)) return prev;
+                    const next = new Map(prev);
+                    next.delete(trackId);
+                    return next;
+                });
+                setDownloadingMeta(prev => {
+                    if (!prev.has(trackId)) return prev;
+                    const next = new Map(prev);
+                    next.delete(trackId);
+                    return next;
+                });
+            }
+
+            if (state === 'completed') {
+                downloaded.refresh();
+                storage.refresh();
+            }
+
+            if (state === 'failed' && error) {
+                showToast({
+                    title: 'Download Failed',
+                    subtitle: error.message,
+                    icon: IconCircleX,
+                    haptics: 'error',
+                });
+            }
+        });
+
         DownloadManager.onDownloadComplete((track) => {
+            progressBufferRef.current.delete(track.trackId);
+            setProgressMap(prev => {
+                if (!prev.has(track.trackId)) return prev;
+                const next = new Map(prev);
+                next.delete(track.trackId);
+                return next;
+            });
             setDownloadingMeta(prev => {
+                if (!prev.has(track.trackId)) return prev;
                 const next = new Map(prev);
                 next.delete(track.trackId);
                 return next;
@@ -114,27 +237,11 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             storage.refresh();
         });
 
-        DownloadManager.onDownloadStateChange((_downloadId, trackId, state, error) => {
-            if (state === 'failed' || state === 'cancelled' || state === 'completed') {
-                setDownloadingMeta(prev => {
-                    const next = new Map(prev);
-                    next.delete(trackId);
-                    return next;
-                });
+        return () => {
+            if (flushTimerRef.current) {
+                clearTimeout(flushTimerRef.current);
             }
-            if (state === 'completed') {
-                downloaded.refresh();
-                storage.refresh();
-            }
-            if (state === 'failed' && error) {
-                showToast({
-                    title: 'Download Failed',
-                    subtitle: error.message,
-                    icon: IconCircleX,
-                    haptics: 'error',
-                });
-            }
-        });
+        };
     }, []);
 
     const convertToTrackItem = useCallback((child: Child): TrackItem => {
@@ -217,22 +324,19 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
         return downloadingMeta.get(trackId);
     }, [downloadingMeta]);
 
+    // Fetch metadata for active downloads that are missing it (e.g. after app restart)
     useEffect(() => {
-        const missingTrackIds = progress.progressList
-            .map(p => p.trackId)
-            .filter(trackId =>
-                !downloadingMeta.has(trackId) &&
-                !metaFetchUnavailableRef.current.has(trackId)
-            );
+        const missingTrackIds: string[] = [];
+        progressMap.forEach((_, trackId) => {
+            if (!downloadingMeta.has(trackId) && !metaFetchUnavailableRef.current.has(trackId)) {
+                missingTrackIds.push(trackId);
+            }
+        });
 
-        if (missingTrackIds.length === 0) {
-            return;
-        }
+        if (missingTrackIds.length === 0) return;
 
         missingTrackIds.forEach(trackId => {
-            if (metaFetchInFlightRef.current.has(trackId)) {
-                return;
-            }
+            if (metaFetchInFlightRef.current.has(trackId)) return;
             metaFetchInFlightRef.current.add(trackId);
 
             cache.fetchChild(trackId)
@@ -242,9 +346,7 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
                         return;
                     }
                     setDownloadingMeta(prev => {
-                        if (prev.has(trackId)) {
-                            return prev;
-                        }
+                        if (prev.has(trackId)) return prev;
                         const next = new Map(prev);
                         next.set(trackId, child);
                         return next;
@@ -255,7 +357,7 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
                     metaFetchInFlightRef.current.delete(trackId);
                 });
         });
-    }, [progress.progressList, downloadingMeta, cache.fetchChild]);
+    }, [progressMap, downloadingMeta, cache.fetchChild]);
 
     const pauseDownload = useCallback(async (downloadId: string) => {
         try {
@@ -294,34 +396,52 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
     }, [actions.retryDownload]);
 
     const filteredActiveDownloads = useMemo(() =>
-        progress.progressList.filter(p =>
+        Array.from(progressMap.values()).filter(p =>
             p.state === 'pending' || p.state === 'downloading' || p.state === 'paused'
         ),
-        [progress.progressList]
+        [progressMap]
     );
 
+    const isDownloading = useMemo(() =>
+        Array.from(progressMap.values()).some(p => p.state === 'downloading'),
+        [progressMap]
+    );
+
+    const getTrackProgress = useCallback((trackId: string) =>
+        progressMap.get(trackId),
+        [progressMap]
+    );
+
+    const contextValue = useMemo<DownloadContextType>(() => ({
+        downloadTrack,
+        downloadTrackById,
+        downloadPlaylist,
+        deleteTrack,
+        deleteAll,
+        cancelDownload,
+        pauseDownload,
+        resumeDownload,
+        retryDownload,
+        isTrackDownloaded: downloaded.isTrackDownloaded,
+        getTrackProgress,
+        getDownloadingMeta,
+        downloadedTracks: downloaded.downloadedTracks,
+        activeDownloads: filteredActiveDownloads,
+        refreshDownloaded: downloaded.refresh,
+        isDownloading,
+        storageInfo: storage.storageInfo,
+        formattedSize: storage.formattedSize,
+        refreshStorage: storage.refresh,
+    }), [
+        downloadTrack, downloadTrackById, downloadPlaylist, deleteTrack, deleteAll,
+        cancelDownload, pauseDownload, resumeDownload, retryDownload,
+        downloaded.isTrackDownloaded, getTrackProgress, getDownloadingMeta,
+        downloaded.downloadedTracks, filteredActiveDownloads, downloaded.refresh,
+        isDownloading, storage.storageInfo, storage.formattedSize, storage.refresh,
+    ]);
+
     return (
-        <DownloadContext.Provider value={{
-            downloadTrack,
-            downloadTrackById,
-            downloadPlaylist,
-            deleteTrack,
-            deleteAll,
-            cancelDownload,
-            pauseDownload,
-            resumeDownload,
-            retryDownload,
-            isTrackDownloaded: downloaded.isTrackDownloaded,
-            getTrackProgress: progress.getProgress,
-            getDownloadingMeta,
-            downloadedTracks: downloaded.downloadedTracks,
-            activeDownloads: filteredActiveDownloads,
-            refreshDownloaded: downloaded.refresh,
-            isDownloading: progress.isDownloading,
-            storageInfo: storage.storageInfo,
-            formattedSize: storage.formattedSize,
-            refreshStorage: storage.refresh,
-        }}>
+        <DownloadContext.Provider value={contextValue}>
             {children}
         </DownloadContext.Provider>
     );

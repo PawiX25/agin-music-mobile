@@ -6,7 +6,7 @@ import Cover from "@lib/components/Cover";
 import ActionIcon from "@lib/components/ActionIcon";
 import { useColors, useCoverBuilder, useDownloads, useQueue, useTabsHeight } from "@lib/hooks";
 import { IconCircleArrowDown, IconPlayerPause, IconPlayerPlay, IconTrash, IconX } from "@tabler/icons-react-native";
-import { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Pressable, SectionList, StyleSheet, View } from "react-native";
 import { SheetManager } from "react-native-actions-sheet";
 import * as Haptics from "expo-haptics";
@@ -22,46 +22,50 @@ function formatBytes(bytes: number): string {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-type ActiveDownloadRow = { type: 'active'; data: DownloadProgress; meta?: Child };
-type CompletedDownloadRow = { type: 'completed'; data: DownloadedTrack };
-type DownloadRow = ActiveDownloadRow | CompletedDownloadRow;
+type DownloadRow =
+    | { type: 'active'; data: DownloadProgress; meta?: Child }
+    | { type: 'completed'; data: DownloadedTrack };
 
-function ActiveDownloadItem({ item, colors, downloads }: { item: ActiveDownloadRow; colors: any; downloads: ReturnType<typeof useDownloads> }) {
+const ActiveDownloadItem = React.memo(function ActiveDownloadItem({
+    progress,
+    meta,
+    onPause,
+    onResume,
+    onCancel,
+}: {
+    progress: DownloadProgress;
+    meta?: Child;
+    onPause: (downloadId: string) => void;
+    onResume: (downloadId: string) => void;
+    onCancel: (downloadId: string) => void;
+}) {
     const cover = useCoverBuilder();
-    const percentage = Math.round(item.data.progress * 100);
-    const meta = item.meta;
+    const colors = useColors();
+    const percentage = Math.round(progress.progress * 100);
     const coverArt = meta?.coverArt;
-    const isPaused = item.data.state === 'paused';
+    const isPaused = progress.state === 'paused';
 
-    const statusText = item.data.state === 'pending'
+    const statusText = progress.state === 'pending'
         ? 'Waiting...'
         : isPaused
             ? `Paused \u2022 ${percentage}%`
             : percentage >= 100
                 ? 'Finalizing...'
-                : `${percentage}% \u2022 ${formatBytes(item.data.bytesDownloaded)} / ${formatBytes(item.data.totalBytes)}`;
+                : `${percentage}% \u2022 ${formatBytes(progress.bytesDownloaded)} / ${formatBytes(progress.totalBytes)}`;
 
-    const handlePauseResume = useCallback(async () => {
+    const handlePauseResume = useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        try {
-            if (isPaused) {
-                await downloads.resumeDownload(item.data.downloadId);
-            } else {
-                await downloads.pauseDownload(item.data.downloadId);
-            }
-        } catch {
-            return;
+        if (isPaused) {
+            onResume(progress.downloadId);
+        } else {
+            onPause(progress.downloadId);
         }
-    }, [isPaused, downloads, item.data.downloadId]);
+    }, [isPaused, onPause, onResume, progress.downloadId]);
 
-    const handleCancel = useCallback(async () => {
+    const handleCancel = useCallback(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        try {
-            await downloads.cancelDownload(item.data.downloadId);
-        } catch {
-            return;
-        }
-    }, [downloads, item.data.downloadId]);
+        onCancel(progress.downloadId);
+    }, [onCancel, progress.downloadId]);
 
     return (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}>
@@ -96,22 +100,38 @@ function ActiveDownloadItem({ item, colors, downloads }: { item: ActiveDownloadR
             />
         </View>
     );
-}
+}, (prev, next) => {
+    if (prev.progress.trackId !== next.progress.trackId) return false;
+    if (prev.progress.state !== next.progress.state) return false;
+    if (Math.round(prev.progress.progress * 100) !== Math.round(next.progress.progress * 100)) return false;
+    if (prev.meta !== next.meta) return false;
+    return true;
+});
 
-function CompletedDownloadItem({ item, colors, onPlay, onLongPress }: {
-    item: CompletedDownloadRow;
-    colors: any;
-    onPlay: () => void;
-    onLongPress: () => void;
+const CompletedDownloadItem = React.memo(function CompletedDownloadItem({
+    trackId,
+    track,
+    fileSize,
+    onPlay,
+    onLongPress,
+}: {
+    trackId: string;
+    track: DownloadedTrack['originalTrack'];
+    fileSize: number;
+    onPlay: (trackId: string) => void;
+    onLongPress: (trackId: string) => void;
 }) {
     const cover = useCoverBuilder();
-    const track = item.data.originalTrack;
+    const colors = useColors();
     const coverArt = (track.extraPayload as any)?._child?.coverArt ?? '';
+
+    const handlePress = useCallback(() => onPlay(trackId), [onPlay, trackId]);
+    const handleLongPress = useCallback(() => onLongPress(trackId), [onLongPress, trackId]);
 
     return (
         <Pressable
-            onPress={onPlay}
-            onLongPress={onLongPress}
+            onPress={handlePress}
+            onLongPress={handleLongPress}
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}
         >
             <Cover
@@ -124,12 +144,14 @@ function CompletedDownloadItem({ item, colors, onPlay, onLongPress }: {
             <View style={{ flex: 1 }}>
                 <Title size={14} numberOfLines={1}>{track.title}</Title>
                 <Title size={12} color={colors.text[1]} fontFamily="Poppins-Regular" numberOfLines={1}>
-                    {track.artist} {item.data.fileSize > 0 ? `\u2022 ${formatBytes(item.data.fileSize)}` : ''}
+                    {track.artist} {fileSize > 0 ? `\u2022 ${formatBytes(fileSize)}` : ''}
                 </Title>
             </View>
         </Pressable>
     );
-}
+}, (prev, next) => {
+    return prev.trackId === next.trackId && prev.fileSize === next.fileSize && prev.track === next.track;
+});
 
 export default function Downloads() {
     const [tabsHeight] = useTabsHeight();
@@ -158,32 +180,20 @@ export default function Downloads() {
             borderRadius: 10,
             backgroundColor: '#ff4d4f15',
         },
-        storageText: {
-            paddingHorizontal: 20,
-            paddingBottom: 8,
-        }
     }), [colors]);
 
-    const activeRows: ActiveDownloadRow[] = downloads.activeDownloads.map(p => ({
-        type: 'active' as const,
-        data: p,
-        meta: downloads.getDownloadingMeta(p.trackId),
-    }));
+    // Stable callbacks for active download items
+    const handlePause = useCallback((downloadId: string) => {
+        downloads.pauseDownload(downloadId).catch(() => { });
+    }, [downloads.pauseDownload]);
 
-    const completedRows: CompletedDownloadRow[] = downloads.downloadedTracks.map(t => ({
-        type: 'completed' as const,
-        data: t,
-    }));
+    const handleResume = useCallback((downloadId: string) => {
+        downloads.resumeDownload(downloadId).catch(() => { });
+    }, [downloads.resumeDownload]);
 
-    const sections = [];
-    if (activeRows.length > 0) {
-        sections.push({ title: 'Downloading', data: activeRows as DownloadRow[] });
-    }
-    if (completedRows.length > 0) {
-        sections.push({ title: `Downloaded \u2022 ${completedRows.length} tracks`, data: completedRows as DownloadRow[] });
-    }
-
-    const isEmpty = activeRows.length === 0 && completedRows.length === 0;
+    const handleCancelDownload = useCallback((downloadId: string) => {
+        downloads.cancelDownload(downloadId).catch(() => { });
+    }, [downloads.cancelDownload]);
 
     const handlePlay = useCallback((trackId: string) => {
         queue.playTrackNow(trackId);
@@ -215,7 +225,84 @@ export default function Downloads() {
         showToast({ title: 'All Downloads Deleted', icon: IconTrash });
     }, [downloads.deleteAll]);
 
+    const activeRows: DownloadRow[] = useMemo(() =>
+        downloads.activeDownloads.map(p => ({
+            type: 'active' as const,
+            data: p,
+            meta: downloads.getDownloadingMeta(p.trackId),
+        })),
+        [downloads.activeDownloads, downloads.getDownloadingMeta]
+    );
+
+    const completedRows: DownloadRow[] = useMemo(() =>
+        downloads.downloadedTracks.map(t => ({
+            type: 'completed' as const,
+            data: t,
+        })),
+        [downloads.downloadedTracks]
+    );
+
+    const sections = useMemo(() => {
+        const s = [];
+        if (activeRows.length > 0) {
+            s.push({ title: 'Downloading', data: activeRows });
+        }
+        if (completedRows.length > 0) {
+            s.push({ title: `Downloaded \u2022 ${completedRows.length} tracks`, data: completedRows });
+        }
+        return s;
+    }, [activeRows, completedRows]);
+
+    const isEmpty = activeRows.length === 0 && completedRows.length === 0;
+
     const subtitle = downloads.formattedSize !== '0 B' ? `${downloads.formattedSize} used` : undefined;
+
+    const renderItem = useCallback(({ item }: { item: DownloadRow }) => {
+        if (item.type === 'active') {
+            return (
+                <ActiveDownloadItem
+                    progress={item.data}
+                    meta={item.meta}
+                    onPause={handlePause}
+                    onResume={handleResume}
+                    onCancel={handleCancelDownload}
+                />
+            );
+        }
+        return (
+            <CompletedDownloadItem
+                trackId={item.data.trackId}
+                track={item.data.originalTrack}
+                fileSize={item.data.fileSize}
+                onPlay={handlePlay}
+                onLongPress={handleLongPress}
+            />
+        );
+    }, [handlePause, handleResume, handleCancelDownload, handlePlay, handleLongPress]);
+
+    const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
+        <View style={styles.sectionHeader}>
+            <Title size={13} fontFamily="Poppins-SemiBold" color={colors.text[1]}>{section.title}</Title>
+        </View>
+    ), [styles.sectionHeader, colors.text]);
+
+    const keyExtractor = useCallback((item: DownloadRow) =>
+        item.type === 'active' ? `active-${item.data.trackId}` : `dl-${item.data.trackId}`,
+        []
+    );
+
+    const listFooter = useMemo(() =>
+        completedRows.length > 0 ? (
+            <View style={styles.footer}>
+                <Pressable style={styles.deleteAllBtn} onPress={handleDeleteAll}>
+                    <IconTrash size={16} color="#ff4d4f" />
+                    <Title size={13} color="#ff4d4f" fontFamily="Poppins-Medium">Delete All Downloads</Title>
+                </Pressable>
+                <View style={{ height: tabsHeight }} />
+            </View>
+        ) : <View style={{ height: tabsHeight }} />,
+        [completedRows.length, styles.footer, styles.deleteAllBtn, handleDeleteAll, tabsHeight]
+    );
 
     return (
         <Container includeBottom={false}>
@@ -231,36 +318,10 @@ export default function Downloads() {
             ) : (
                 <SectionList
                     sections={sections}
-                    keyExtractor={(item) => item.type === 'active' ? `active-${item.data.trackId}` : `dl-${item.data.trackId}`}
-                    renderSectionHeader={({ section }) => (
-                        <View style={styles.sectionHeader}>
-                            <Title size={13} fontFamily="Poppins-SemiBold" color={colors.text[1]}>{section.title}</Title>
-                        </View>
-                    )}
-                    renderItem={({ item }) => {
-                        if (item.type === 'active') {
-                            return <ActiveDownloadItem item={item} colors={colors} downloads={downloads} />;
-                        }
-                        return (
-                            <CompletedDownloadItem
-                                item={item}
-                                colors={colors}
-                                onPlay={() => handlePlay(item.data.trackId)}
-                                onLongPress={() => handleLongPress(item.data.trackId)}
-                            />
-                        );
-                    }}
-                    ListFooterComponent={
-                        completedRows.length > 0 ? (
-                            <View style={styles.footer}>
-                                <Pressable style={styles.deleteAllBtn} onPress={handleDeleteAll}>
-                                    <IconTrash size={16} color="#ff4d4f" />
-                                    <Title size={13} color="#ff4d4f" fontFamily="Poppins-Medium">Delete All Downloads</Title>
-                                </Pressable>
-                                <View style={{ height: tabsHeight }} />
-                            </View>
-                        ) : <View style={{ height: tabsHeight }} />
-                    }
+                    keyExtractor={keyExtractor}
+                    renderSectionHeader={renderSectionHeader}
+                    renderItem={renderItem}
+                    ListFooterComponent={listFooter}
                     stickySectionHeadersEnabled={false}
                 />
             )}
