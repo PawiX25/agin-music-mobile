@@ -6,8 +6,8 @@ import Cover from "@lib/components/Cover";
 import ActionIcon from "@lib/components/ActionIcon";
 import { useColors, useCoverBuilder, useDownloads, useQueue, useTabsHeight } from "@lib/hooks";
 import { IconCircleArrowDown, IconPlayerPause, IconPlayerPlay, IconTrash, IconX } from "@tabler/icons-react-native";
-import React, { useCallback, useMemo } from "react";
-import { Pressable, SectionList, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { Animated, Pressable, SectionList, StyleSheet, View } from "react-native";
 import { SheetManager } from "react-native-actions-sheet";
 import * as Haptics from "expo-haptics";
 import showToast from "@lib/showToast";
@@ -45,6 +45,22 @@ const ActiveDownloadItem = React.memo(function ActiveDownloadItem({
     const coverArt = meta?.coverArt;
     const isPaused = progress.state === 'paused';
 
+    // Smooth animated progress bar
+    const animatedProgress = useRef(new Animated.Value(progress.progress)).current;
+    useEffect(() => {
+        Animated.timing(animatedProgress, {
+            toValue: progress.progress,
+            duration: 400,
+            useNativeDriver: false,
+        }).start();
+    }, [progress.progress]);
+
+    const animatedWidth = animatedProgress.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '100%'],
+        extrapolate: 'clamp',
+    });
+
     const statusText = progress.state === 'pending'
         ? 'Waiting...'
         : isPaused
@@ -80,7 +96,7 @@ const ActiveDownloadItem = React.memo(function ActiveDownloadItem({
                 <Title size={14} numberOfLines={1}>{meta?.title ?? 'Downloading...'}</Title>
                 <Title size={12} color={colors.text[1]} fontFamily="Poppins-Regular" numberOfLines={1}>{meta?.artist ?? 'Downloading...'}</Title>
                 <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.border[0], marginTop: 4, overflow: 'hidden' }}>
-                    <View style={{ height: '100%', width: `${percentage}%`, backgroundColor: isPaused ? colors.text[1] : colors.forcedTint, borderRadius: 2 }} />
+                    <Animated.View style={{ height: '100%', width: animatedWidth, backgroundColor: isPaused ? colors.text[1] : colors.forcedTint, borderRadius: 2 }} />
                 </View>
                 <Title size={11} color={colors.text[1]} fontFamily="Poppins-Regular" style={{ marginTop: 2 }}>
                     {statusText}
@@ -103,7 +119,7 @@ const ActiveDownloadItem = React.memo(function ActiveDownloadItem({
 }, (prev, next) => {
     if (prev.progress.trackId !== next.progress.trackId) return false;
     if (prev.progress.state !== next.progress.state) return false;
-    if (Math.round(prev.progress.progress * 100) !== Math.round(next.progress.progress * 100)) return false;
+    if (prev.progress.progress !== next.progress.progress) return false;
     if (prev.meta !== next.meta) return false;
     return true;
 });
@@ -112,18 +128,33 @@ const CompletedDownloadItem = React.memo(function CompletedDownloadItem({
     trackId,
     track,
     fileSize,
+    localArtworkPath,
     onPlay,
     onLongPress,
 }: {
     trackId: string;
     track: DownloadedTrack['originalTrack'];
     fileSize: number;
+    localArtworkPath?: string | null;
     onPlay: (trackId: string) => void;
     onLongPress: (trackId: string) => void;
 }) {
     const cover = useCoverBuilder();
     const colors = useColors();
-    const coverArt = (track.extraPayload as any)?._child?.coverArt ?? '';
+
+    const coverArtId = (track.extraPayload as any)?._child?.coverArt;
+    const coverSource = localArtworkPath
+        ? { uri: `file://${localArtworkPath}` }
+        : coverArtId
+            ? { uri: cover.generateUrl(coverArtId, { size: 128 }) }
+            : track.artwork
+                ? { uri: typeof track.artwork === 'string' ? track.artwork : undefined }
+                : undefined;
+    const cacheKey = localArtworkPath
+        ? `local-${trackId}`
+        : coverArtId
+            ? `${coverArtId}-128x128`
+            : trackId;
 
     const handlePress = useCallback(() => onPlay(trackId), [onPlay, trackId]);
     const handleLongPress = useCallback(() => onLongPress(trackId), [onLongPress, trackId]);
@@ -135,8 +166,8 @@ const CompletedDownloadItem = React.memo(function CompletedDownloadItem({
             style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8, gap: 12 }}
         >
             <Cover
-                source={coverArt ? { uri: cover.generateUrl(coverArt, { size: 128 }) } : undefined}
-                cacheKey={coverArt ? `${coverArt}-128x128` : undefined}
+                source={coverSource}
+                cacheKey={cacheKey}
                 size={44}
                 radius={6}
                 withShadow={false}
@@ -150,7 +181,8 @@ const CompletedDownloadItem = React.memo(function CompletedDownloadItem({
         </Pressable>
     );
 }, (prev, next) => {
-    return prev.trackId === next.trackId && prev.fileSize === next.fileSize && prev.track === next.track;
+    return prev.trackId === next.trackId && prev.fileSize === next.fileSize
+        && prev.track === next.track && prev.localArtworkPath === next.localArtworkPath;
 });
 
 export default function Downloads() {
@@ -274,6 +306,7 @@ export default function Downloads() {
                 trackId={item.data.trackId}
                 track={item.data.originalTrack}
                 fileSize={item.data.fileSize}
+                localArtworkPath={item.data.localArtworkPath}
                 onPlay={handlePlay}
                 onLongPress={handleLongPress}
             />
