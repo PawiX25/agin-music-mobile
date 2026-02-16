@@ -7,7 +7,7 @@ import ActionIcon from "@lib/components/ActionIcon";
 import { useColors, useCoverBuilder, useDownloads, useQueue, useTabsHeight } from "@lib/hooks";
 import { IconCircleArrowDown, IconPlayerPause, IconPlayerPlay, IconTrash, IconX } from "@tabler/icons-react-native";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Animated, Pressable, SectionList, StyleSheet, View } from "react-native";
+import { Animated, LayoutAnimation, Pressable, SectionList, StyleSheet, View } from "react-native";
 import { SheetManager } from "react-native-actions-sheet";
 import * as Haptics from "expo-haptics";
 import showToast from "@lib/showToast";
@@ -181,8 +181,13 @@ const CompletedDownloadItem = React.memo(function CompletedDownloadItem({
         </Pressable>
     );
 }, (prev, next) => {
-    return prev.trackId === next.trackId && prev.fileSize === next.fileSize
-        && prev.track === next.track && prev.localArtworkPath === next.localArtworkPath;
+    if (prev.trackId !== next.trackId) return false;
+    if (prev.fileSize !== next.fileSize) return false;
+    if (prev.localArtworkPath !== next.localArtworkPath) return false;
+    if (prev.track.title !== next.track.title) return false;
+    if (prev.track.artist !== next.track.artist) return false;
+    if (prev.track.artwork !== next.track.artwork) return false;
+    return true;
 });
 
 export default function Downloads() {
@@ -253,6 +258,11 @@ export default function Downloads() {
             }
         });
         if (!confirmed) return;
+        LayoutAnimation.configureNext({
+            duration: 350,
+            update: { type: LayoutAnimation.Types.easeInEaseOut },
+            delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        });
         await downloads.deleteAll();
         showToast({ title: 'All Downloads Deleted', icon: IconTrash });
     }, [downloads.deleteAll]);
@@ -266,12 +276,19 @@ export default function Downloads() {
         [downloads.activeDownloads, downloads.getDownloadingMeta]
     );
 
+    const activeTrackIds = useMemo(() =>
+        new Set(downloads.activeDownloads.map(p => p.trackId)),
+        [downloads.activeDownloads]
+    );
+
     const completedRows: DownloadRow[] = useMemo(() =>
-        downloads.downloadedTracks.map(t => ({
-            type: 'completed' as const,
-            data: t,
-        })),
-        [downloads.downloadedTracks]
+        downloads.downloadedTracks
+            .filter(t => !activeTrackIds.has(t.trackId))
+            .map(t => ({
+                type: 'completed' as const,
+                data: t,
+            })),
+        [downloads.downloadedTracks, activeTrackIds]
     );
 
     const sections = useMemo(() => {
@@ -287,7 +304,11 @@ export default function Downloads() {
 
     const isEmpty = activeRows.length === 0 && completedRows.length === 0;
 
-    const subtitle = downloads.formattedSize !== '0 B' ? `${downloads.formattedSize} used` : undefined;
+    const subtitle = downloads.formattedSize !== '0 B'
+        ? `${downloads.formattedSize} used`
+        : !isEmpty
+            ? ' '
+            : undefined;
 
     const renderItem = useCallback(({ item }: { item: DownloadRow }) => {
         if (item.type === 'active') {

@@ -1,7 +1,7 @@
 import { useColors } from '@lib/hooks';
 import { Icon } from '@tabler/icons-react-native';
 import { Image, ImageSource } from 'expo-image';
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 export type CoverProps = {
@@ -13,8 +13,10 @@ export type CoverProps = {
     icon?: Icon;
 }
 
-export default function Cover({ source, size, radius, withShadow = true, cacheKey, icon: Icon }: CoverProps) {
+export default React.memo(function Cover({ source, size, radius, withShadow = true, cacheKey, icon: Icon }: CoverProps) {
     const colors = useColors();
+
+    const imageSource = useMemo(() => ({ ...source, cacheKey }), [source?.uri, cacheKey]);
 
     const styles = useMemo(() => StyleSheet.create({
         container: {
@@ -30,7 +32,6 @@ export default function Cover({ source, size, radius, withShadow = true, cacheKe
         },
         image: {
             width: size ?? '100%',
-            // height: 300,
             aspectRatio: 1 / 1,
             borderRadius: radius ?? 15,
             borderColor: '#ffffff10',
@@ -47,7 +48,7 @@ export default function Cover({ source, size, radius, withShadow = true, cacheKe
         <View style={withShadow && styles.container}>
             {Icon ? <View style={[styles.image, styles.icon]}>
                 <Icon size={20} color={colors.forcedTint} />
-            </View> : <Image source={{ ...source, cacheKey }} style={styles.image} cachePolicy="disk" />}
+            </View> : <Image source={imageSource} style={styles.image} cachePolicy="disk" />}
         </View>
     )
-}
+});

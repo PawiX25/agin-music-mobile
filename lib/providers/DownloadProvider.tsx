@@ -1,4 +1,9 @@
 import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutAnimation, Platform, UIManager } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useCache, useCoverBuilder, useServer, useSubsonicParams } from '@lib/hooks';
 import {
     DownloadManager,
@@ -84,6 +89,9 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
     const metaFetchUnavailableRef = useRef<Set<string>>(new Set());
     const progressBufferRef = useRef<Map<string, DownloadProgress>>(new Map());
     const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const completingRef = useRef<Set<string>>(new Set());
+    const pendingCleanupRef = useRef<Set<string>>(new Set());
+    const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const flushProgressBuffer = useCallback(() => {
         flushTimerRef.current = null;
@@ -183,7 +191,7 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
                 });
             }
 
-            if (state === 'failed' || state === 'cancelled' || state === 'completed') {
+            if (state === 'failed' || state === 'cancelled') {
                 progressBufferRef.current.delete(trackId);
                 setProgressMap(prev => {
                     if (!prev.has(trackId)) return prev;
@@ -200,8 +208,47 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             }
 
             if (state === 'completed') {
-                downloaded.refresh();
-                storage.refresh();
+                progressBufferRef.current.delete(trackId);
+                if (!completingRef.current.has(trackId)) {
+                    completingRef.current.add(trackId);
+                    // Set to 100% so the progress bar animates to full
+                    setProgressMap(prev => {
+                        const existing = prev.get(trackId);
+                        if (!existing) return prev;
+                        const next = new Map(prev);
+                        next.set(trackId, { ...existing, progress: 1 });
+                        return next;
+                    });
+                    // After bar fills, batch cleanup with LayoutAnimation
+                    setTimeout(() => {
+                        completingRef.current.delete(trackId);
+                        pendingCleanupRef.current.add(trackId);
+                        if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
+                        cleanupTimerRef.current = setTimeout(() => {
+                            cleanupTimerRef.current = null;
+                            const toClean = new Set(pendingCleanupRef.current);
+                            pendingCleanupRef.current.clear();
+                            LayoutAnimation.configureNext({
+                                duration: 350,
+                                create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+                                update: { type: LayoutAnimation.Types.easeInEaseOut },
+                                delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+                            });
+                            setProgressMap(prev => {
+                                const next = new Map(prev);
+                                toClean.forEach(id => next.delete(id));
+                                return next.size !== prev.size ? next : prev;
+                            });
+                            setDownloadingMeta(prev => {
+                                const next = new Map(prev);
+                                toClean.forEach(id => next.delete(id));
+                                return next.size !== prev.size ? next : prev;
+                            });
+                            downloaded.refresh();
+                            storage.refresh();
+                        }, 100);
+                    }, 800);
+                }
             }
 
             if (state === 'failed' && error) {
@@ -215,32 +262,16 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
         });
 
         DownloadManager.onDownloadComplete((track) => {
-            progressBufferRef.current.delete(track.trackId);
-            setProgressMap(prev => {
-                if (!prev.has(track.trackId)) return prev;
-                const next = new Map(prev);
-                next.delete(track.trackId);
-                return next;
-            });
-            setDownloadingMeta(prev => {
-                if (!prev.has(track.trackId)) return prev;
-                const next = new Map(prev);
-                next.delete(track.trackId);
-                return next;
-            });
             showToast({
                 title: 'Download Complete',
                 subtitle: track.originalTrack.title || track.trackId,
                 icon: IconCircleCheck,
             });
-            downloaded.refresh();
-            storage.refresh();
         });
 
         return () => {
-            if (flushTimerRef.current) {
-                clearTimeout(flushTimerRef.current);
-            }
+            if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+            if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
         };
     }, []);
 
