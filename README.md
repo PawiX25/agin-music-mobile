@@ -9,11 +9,16 @@ Agin Music is an open source client for OpenSubsonic-compatible servers written 
 - :microphone: Synced lyrics support
 - :headphones: Bluetooth audio/AirPlay support
 - :new_moon: Dark mode support
-- :sparkling_heart: Marking songs as favourite _(coming soon)_
-- :pushpin: Pinning songs, albums and artist
+- :sparkling_heart: Marking songs as favourite
+- :pushpin: Pinning songs, albums and artists
 - :iphone: Managing playback from the lock screen
 - :point_up_2: Gesture support
-- :floppy_disk: Offline playback _(coming soon)_
+- :floppy_disk: Offline playback with download management
+- :control_knobs: 5-band equalizer with presets
+- :notes: Artist detail pages with full discography
+- :pencil: Playlist editing (rename, reorder, add/remove songs)
+- :gear: Streaming quality settings (bitrate & format)
+- :arrows_counterclockwise: Nextcloud Music server support (legacy auth)
 
 More features coming soon!
 
@@ -25,20 +30,21 @@ More features coming soon!
 - [x] Dark mode support
 - [x] Managing playback from the lock screen
 - [x] Gesture support
-- [ ] Marking songs as favourite
-- [ ] Artists and songs view in the Library
-- [ ] Offline playback
+- [x] Marking songs as favourite
+- [x] Artists and songs view in the Library
+- [x] Offline playback
+- [x] Playlist items reordering
+- [x] Playlist renaming
+- [x] Quality settings
+- [x] Equalizer with presets
+- [x] Selecting default tab
 - [ ] Playback history
-- [ ] Playlist items reordering
-- [ ] Playlist renaming
-- [ ] Quality settings
 - [ ] Locally storing playback history
 - [ ] Homepage improvements
 - [x] Widgets on Android
 - [ ] Widgets on iOS
 - [ ] Performance improvements
-- [ ] CarPlay support
-- [ ] Selecting default tab
+- [x] CarPlay support (basic now playing)
 
 ## TestFlight
 
@@ -104,5 +110,5 @@ npx expo run:android
 **Building in release mode**
 
 ```
-npx expo run:ios --variant Release
+npx expo run:android --variant Release
 ```
