@@ -4,7 +4,7 @@ import Setting, { SettingSelectOption } from '@lib/components/Setting';
 import SettingsSection from '@lib/components/SettingsSection';
 import Title from '@lib/components/Title';
 import { useCache, useColors, useMemoryCache, useTabsHeight } from '@lib/hooks';
-import { IconCircleCheck, IconDoor, IconFileMusic, IconLayoutGrid, IconVolume } from '@tabler/icons-react-native';
+import { IconCircleCheck, IconDoor, IconFileMusic, IconLayoutGrid, IconVolume, IconWifi } from '@tabler/icons-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SheetManager } from 'react-native-actions-sheet';
@@ -44,7 +44,7 @@ const defaultLibraryTabOptions: SettingSelectOption[] = [
     { label: 'Songs', description: 'All songs', value: 'songs', shortLabel: 'Songs' },
 ];
 
-export type SettingId = 'streaming.maxBitRate' | 'streaming.format' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar' | 'app.defaultTab' | 'app.defaultLibraryTab' | 'eq.enabled';
+export type SettingId = 'streaming.maxBitRate' | 'streaming.format' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar' | 'app.defaultTab' | 'app.defaultLibraryTab' | 'eq.enabled' | 'downloads.wifiOnly';
 
 const EQ_PRESETS: Record<string, number[]> = {
     Flat:      [0, 0, 0, 0, 0],
@@ -240,6 +240,14 @@ export default function Settings() {
                     />
                     <SettingsSection label='Equalizer' />
                     <EQSection />
+                    <SettingsSection label='Downloads' />
+                    <Setting
+                        id='downloads.wifiOnly'
+                        type='switch'
+                        label='Wi-Fi Only Downloads'
+                        description='Only download music when connected to Wi-Fi'
+                        icon={IconWifi}
+                    />
                     <SettingsSection label='Storage' />
                     <Setting
                         id='storage.clearCache'

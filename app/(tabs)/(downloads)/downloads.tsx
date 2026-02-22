@@ -5,7 +5,7 @@ import Title from "@lib/components/Title";
 import Cover from "@lib/components/Cover";
 import ActionIcon from "@lib/components/ActionIcon";
 import { useColors, useCoverBuilder, useDownloads, useQueue, useTabsHeight } from "@lib/hooks";
-import { IconCircleArrowDown, IconPlayerPause, IconPlayerPlay, IconTrash, IconX } from "@tabler/icons-react-native";
+import { IconCircleArrowDown, IconPlayerPause, IconPlayerPlay, IconTrash, IconWifi, IconX } from "@tabler/icons-react-native";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Animated as RNAnimated, Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -359,11 +359,41 @@ export default function Downloads() {
         [completedRows.length, styles.footer, styles.deleteAllBtn, handleDeleteAll, tabsHeight]
     );
 
+    const wifiBanner = useMemo(() => {
+        if (!downloads.wifiOnlyBlocked) return null;
+        const count = downloads.pendingDownloadCount;
+        return (
+            <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginHorizontal: 20,
+                marginTop: 12,
+                marginBottom: 4,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 12,
+                backgroundColor: colors.border[0],
+                gap: 10,
+            }}>
+                <IconWifi size={18} color={colors.forcedTint} />
+                <View style={{ flex: 1 }}>
+                    <Title size={13} fontFamily="Poppins-SemiBold">Wi-Fi Only Mode</Title>
+                    <Title size={12} fontFamily="Poppins-Regular" color={colors.text[1]}>
+                        {count > 0
+                            ? `${count} download${count !== 1 ? 's' : ''} waiting for Wi-Fi`
+                            : 'Downloads paused until Wi-Fi is available'}
+                    </Title>
+                </View>
+            </View>
+        );
+    }, [downloads.wifiOnlyBlocked, downloads.pendingDownloadCount, colors]);
+
     return (
         <Container includeBottom={false}>
             <Header title="Downloads" subtitle={subtitle} />
             {isEmpty ? (
                 <View style={{ flex: 1, paddingBottom: tabsHeight }}>
+                    {downloads.wifiOnlyBlocked && wifiBanner}
                     <FullscreenMessage
                         icon={IconCircleArrowDown}
                         label="No Downloads"
@@ -375,6 +405,7 @@ export default function Downloads() {
                     data={flatData}
                     keyExtractor={keyExtractor}
                     renderItem={renderItem}
+                    ListHeaderComponent={downloads.wifiOnlyBlocked ? wifiBanner : undefined}
                     ListFooterComponent={listFooter}
                     itemLayoutAnimation={LinearTransition.duration(250)}
                     skipEnteringExitingAnimations

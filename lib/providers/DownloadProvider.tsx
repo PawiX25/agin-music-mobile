@@ -13,7 +13,9 @@ import {
 import { Child } from '@lib/types';
 import qs from 'qs';
 import showToast from '@lib/showToast';
-import { IconCircleCheck, IconCircleX, IconDownload } from '@tabler/icons-react-native';
+import { IconCircleCheck, IconCircleX, IconDownload, IconWifi } from '@tabler/icons-react-native';
+import * as Network from 'expo-network';
+import { useSetting } from '@lib/hooks/useSetting';
 
 export type DownloadContextType = {
     downloadTrack: (child: Child, playlistId?: string) => Promise<void>;
@@ -38,6 +40,9 @@ export type DownloadContextType = {
     storageInfo: DownloadStorageInfo | null;
     formattedSize: string;
     refreshStorage: () => Promise<void>;
+
+    wifiOnlyBlocked: boolean;
+    pendingDownloadCount: number;
 }
 
 const initial: DownloadContextType = {
@@ -60,6 +65,8 @@ const initial: DownloadContextType = {
     storageInfo: null,
     formattedSize: '0 B',
     refreshStorage: async () => { },
+    wifiOnlyBlocked: false,
+    pendingDownloadCount: 0,
 };
 
 export const DownloadContext = createContext<DownloadContextType>(initial);
@@ -75,6 +82,36 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
     const actions = useDownloadActions();
     const downloaded = useDownloadedTracks();
     const storage = useDownloadStorage();
+
+    const wifiOnlySetting = useSetting('downloads.wifiOnly');
+    const [isOnWifi, setIsOnWifi] = useState(true);
+    const [pendingDownloadCount, setPendingDownloadCount] = useState(0);
+    const pendingDownloadsRef = useRef<{ child: Child; playlistId?: string }[]>([]);
+
+    const wifiOnly = wifiOnlySetting === true;
+    const wifiOnlyBlocked = wifiOnly && !isOnWifi;
+
+    const startPendingRef = useRef<(() => void) | null>(null);
+    useEffect(() => {
+        let mounted = true;
+        let wasOnWifi = true;
+        const checkNetwork = async () => {
+            try {
+                const state = await Network.getNetworkStateAsync();
+                const nowOnWifi = state.type === Network.NetworkStateType.WIFI;
+                if (mounted) {
+                    setIsOnWifi(nowOnWifi);
+                    if (nowOnWifi && !wasOnWifi && startPendingRef.current) {
+                        startPendingRef.current();
+                    }
+                    wasOnWifi = nowOnWifi;
+                }
+            } catch { }
+        };
+        checkNetwork();
+        const interval = setInterval(checkNetwork, 5000);
+        return () => { mounted = false; clearInterval(interval); };
+    }, []);
 
     const [downloadingMeta, setDownloadingMeta] = useState<Map<string, Child>>(new Map());
     const [progressMap, setProgressMap] = useState<Map<string, DownloadProgress>>(new Map());
@@ -284,6 +321,19 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             showToast({ title: 'Already Downloading', subtitle: child.title });
             return;
         }
+
+        if (wifiOnly) {
+            try {
+                const state = await Network.getNetworkStateAsync();
+                if (state.type !== Network.NetworkStateType.WIFI) {
+                    setIsOnWifi(false);
+                    pendingDownloadsRef.current.push({ child, playlistId });
+                    setPendingDownloadCount(pendingDownloadsRef.current.length);
+                    showToast({ title: 'Wi-Fi Only Mode', subtitle: 'Download will start when connected to Wi-Fi', icon: IconWifi });
+                    return;
+                }
+            } catch { }
+        }
         const trackItem = convertToTrackItem(child);
         setDownloadingMeta(prev => new Map(prev).set(child.id, child));
         try {
@@ -297,7 +347,7 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             });
             showToast({ title: 'Download Error', subtitle: String(e), haptics: 'error', icon: IconCircleX });
         }
-    }, [convertToTrackItem, actions.downloadTrack]);
+    }, [convertToTrackItem, actions.downloadTrack, wifiOnly]);
 
     const downloadTrackById = useCallback(async (id: string) => {
         const child = await cache.fetchChild(id);
@@ -311,6 +361,20 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
         if (newTracks.length === 0) {
             showToast({ title: 'Already Downloaded', subtitle: `All ${tracks.length} tracks are downloaded` });
             return;
+        }
+        if (wifiOnly) {
+            try {
+                const state = await Network.getNetworkStateAsync();
+                if (state.type !== Network.NetworkStateType.WIFI) {
+                    setIsOnWifi(false);
+                    for (const track of newTracks) {
+                        pendingDownloadsRef.current.push({ child: track, playlistId });
+                    }
+                    setPendingDownloadCount(pendingDownloadsRef.current.length);
+                    showToast({ title: 'Wi-Fi Only Mode', subtitle: `${newTracks.length} downloads will start when connected to Wi-Fi`, icon: IconWifi });
+                    return;
+                }
+            } catch { }
         }
         const trackItems = newTracks.map(convertToTrackItem);
         setDownloadingMeta(prev => {
@@ -333,7 +397,21 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             });
             showToast({ title: 'Download Error', subtitle: String(e), haptics: 'error', icon: IconCircleX });
         }
-    }, [convertToTrackItem, actions.downloadPlaylist]);
+    }, [convertToTrackItem, actions.downloadPlaylist, wifiOnly]);
+
+    useEffect(() => {
+        startPendingRef.current = () => {
+            const pending = pendingDownloadsRef.current.splice(0);
+            if (pending.length === 0) return;
+            setPendingDownloadCount(0);
+            showToast({ title: 'Wi-Fi Connected', subtitle: `Starting ${pending.length} pending download${pending.length > 1 ? 's' : ''}`, icon: IconWifi });
+            for (const { child, playlistId } of pending) {
+                const trackItem = convertToTrackItem(child);
+                setDownloadingMeta(prev => new Map(prev).set(child.id, child));
+                actions.downloadTrack(trackItem, playlistId).catch(() => {});
+            }
+        };
+    }, [convertToTrackItem, actions.downloadTrack]);
 
     const deleteTrack = useCallback(async (trackId: string) => {
         await actions.deleteTrack(trackId);
@@ -458,12 +536,15 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
         storageInfo: storage.storageInfo,
         formattedSize: storage.formattedSize,
         refreshStorage: storage.refresh,
+        wifiOnlyBlocked,
+        pendingDownloadCount,
     }), [
         downloadTrack, downloadTrackById, downloadPlaylist, deleteTrack, deleteAll,
         cancelDownload, pauseDownload, resumeDownload, retryDownload,
         downloaded.isTrackDownloaded, getTrackProgress, getDownloadingMeta,
         downloaded.downloadedTracks, filteredActiveDownloads, downloaded.refresh,
         isDownloading, storage.storageInfo, storage.formattedSize, storage.refresh,
+        wifiOnlyBlocked, pendingDownloadCount,
     ]);
 
     return (

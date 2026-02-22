@@ -5,7 +5,7 @@ import Title from '@lib/components/Title';
 import { Icon } from '@tabler/icons-react-native';
 import { SheetManager } from 'react-native-actions-sheet';
 import * as Haptics from 'expo-haptics';
-import { SettingValue, useSetting } from '@lib/hooks/useSetting';
+import { SettingValue, useSetting, emitSettingChange } from '@lib/hooks/useSetting';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SettingId } from '@/app/(tabs)/(index,library,search)/settings';
 
@@ -52,6 +52,7 @@ export default function Setting({ id, icon, label, description, type, options, d
     useEffect(() => {
         (async () => {
             await AsyncStorage.setItem(`settings.${id}`, JSON.stringify(value));
+            emitSettingChange(id, value);
         })();
     }, [value, id]);
 
