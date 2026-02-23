@@ -46,7 +46,6 @@ export default function Queue() {
                 onDragEnd={handleDragEnd}
                 itemEnteringAnimation={FadeIn.duration(300)}
                 itemExitingAnimation={FadeOut.duration(250)}
-                itemLayoutAnimation={LinearTransition.duration(250)}
             />
         </View>
     )

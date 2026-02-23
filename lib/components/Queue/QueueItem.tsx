@@ -2,6 +2,7 @@ import { useColors, useCoverBuilder, useQueue } from '@lib/hooks';
 import { Child } from '@lib/types';
 import { useContext, useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { RenderItemParams } from 'react-native-draggable-flatlist';
 import Cover from '../Cover';
 import Title from '../Title';
@@ -21,6 +22,15 @@ function QueueItem({ item, getIndex, drag, isActive }: RenderItemParams<Child>) 
 
     const [gestureEnabled, setGestureEnabled] = useContext(GestureEnabledContext);
 
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            backgroundColor: withTiming(
+                isActive ? 'rgba(255,255,255,0.2)' : isPlaying ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0)',
+                { duration: 250 }
+            )
+        };
+    }, [isActive, isPlaying]);
+
     const styles = useMemo(() => StyleSheet.create({
         item: {
             flexDirection: 'row',
@@ -28,20 +38,10 @@ function QueueItem({ item, getIndex, drag, isActive }: RenderItemParams<Child>) 
             alignItems: 'center',
             paddingVertical: 3,
             paddingHorizontal: 30,
-            backgroundColor: isActive ? '#ffffff20' : isPlaying ? '#ffffff10' : 'transparent',
             overflow: 'hidden',
             gap: 5,
         },
         activeItem: {
-            shadowColor: '#000',
-            shadowOffset: {
-                width: 0,
-                height: 2,
-            },
-            shadowOpacity: 0.4,
-            shadowRadius: 5,
-
-            elevation: 5,
         },
         left: {
             flexDirection: 'row',
@@ -61,7 +61,7 @@ function QueueItem({ item, getIndex, drag, isActive }: RenderItemParams<Child>) 
             drag();
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
         }}>
-            <View style={[styles.item, isActive && styles.activeItem]}>
+            <Animated.View style={[styles.item, animatedStyle, isActive && styles.activeItem]}>
                 <View style={styles.left}>
                     <Cover
                         source={{ uri: cover.generateUrl(item.coverArt ?? '', { size: 128 }) }}
@@ -76,7 +76,7 @@ function QueueItem({ item, getIndex, drag, isActive }: RenderItemParams<Child>) 
                     </View>
                 </View>
                 <IconMenu size={20} color={colors.text[1]} />
-            </View>
+            </Animated.View>
         </TouchableOpacity>
     )
 }
