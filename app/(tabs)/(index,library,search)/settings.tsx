@@ -44,7 +44,7 @@ const defaultLibraryTabOptions: SettingSelectOption[] = [
     { label: 'Songs', description: 'All songs', value: 'songs', shortLabel: 'Songs' },
 ];
 
-export type SettingId = 'streaming.maxBitRate' | 'streaming.format' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar' | 'app.defaultTab' | 'app.defaultLibraryTab' | 'eq.enabled' | 'downloads.wifiOnly';
+export type SettingId = 'streaming.maxBitRate' | 'streaming.format' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar' | 'app.defaultTab' | 'app.defaultLibraryTab' | 'eq.enabled' | 'downloads.wifiOnly' | 'app.persistQueue';
 
 const EQ_PRESETS: Record<string, number[]> = {
     Flat:      [0, 0, 0, 0, 0],
@@ -201,6 +201,12 @@ export default function Settings() {
             <ScrollView contentContainerStyle={{ paddingBottom: tabsHeight }}>
                 <View style={styles.settings}>
                     <SettingsSection label='Launch' />
+                    <Setting
+                        id='app.persistQueue'
+                        type='switch'
+                        label='Persist Queue on Restart'
+                        description='Save and restore your queue and playback state when restarting the app'
+                    />
                     <Setting
                         id='app.defaultTab'
                         type='select'

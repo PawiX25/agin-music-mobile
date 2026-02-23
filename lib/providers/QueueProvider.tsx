@@ -9,6 +9,7 @@ import { TrackPlayer, PlayerQueue, useOnPlaybackProgressChange, useOnChangeTrack
 import showToast from '@lib/showToast';
 import { IconExclamationCircle } from '@tabler/icons-react-native';
 import { shuffleArray } from '@lib/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type RepeatModeValue = 'off' | 'Playlist' | 'track';
 
@@ -115,6 +116,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     const helpers = useApiHelpers();
     const maxBitRate = useSetting('streaming.maxBitRate') as string | undefined;
     const streamingFormat = useSetting('streaming.format') as string | undefined;
+    const persistQueue = useSetting('app.persistQueue') as boolean | undefined;
 
     const progressRef = useRef<number>(0);
     const { position: playbackPosition } = useOnPlaybackProgressChange();
@@ -227,6 +229,59 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         updateNowPlaying();
         updateQueue();
         updateActive();
+    }, []);
+
+    useEffect(() => {
+        if (persistQueue) {
+            const stateToSave = {
+                queue: queue.map(q => q._child),
+                activeIndex,
+                source,
+                repeatMode,
+            };
+            AsyncStorage.setItem('@agin:queue_state', JSON.stringify(stateToSave)).catch(console.error);
+        } else if (persistQueue === false) {
+            AsyncStorage.removeItem('@agin:queue_state').catch(console.error);
+        }
+    }, [queue, activeIndex, source, repeatMode, persistQueue]);
+
+    useEffect(() => {
+        const restoreQueue = async () => {
+            try {
+                const persistSetting = await AsyncStorage.getItem('settings.app.persistQueue');
+                if (persistSetting !== 'true') return;
+
+                const savedStateStr = await AsyncStorage.getItem('@agin:queue_state');
+                if (savedStateStr) {
+                    const savedState = JSON.parse(savedStateStr);
+                    if (savedState.queue && savedState.queue.length > 0) {
+                        const tracks = savedState.queue.map(convertToTrackItem);
+                        loadTracks(tracks);
+                        if (savedState.activeIndex !== undefined) {
+                            await TrackPlayer.skipToIndex(savedState.activeIndex);
+                        }
+                        if (savedState.source) {
+                            setSource(savedState.source);
+                        }
+                        if (savedState.repeatMode) {
+                            setRepeatMode(savedState.repeatMode);
+                            TrackPlayer.setRepeatMode(savedState.repeatMode);
+                        }
+                        await updateQueue();
+                        await updateActive();
+                        await updateNowPlaying();
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to restore queue state', e);
+            }
+        };
+
+        TrackPlayer.getActualQueue().then(currentQueue => {
+            if (!currentQueue || currentQueue.length === 0) {
+                restoreQueue();
+            }
+        });
     }, []);
 
     const { track: changedTrack } = useOnChangeTrack();

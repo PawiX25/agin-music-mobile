@@ -79,7 +79,7 @@ export default function Setting({ id, icon, label, description, type, options, d
     return (
         <TouchableHighlight onPress={handlePress} underlayColor={colors.secondaryBackground} {...props}>
             <View style={styles.option}>
-                <View>
+                <View style={{ flex: 1, paddingRight: 10 }}>
                     <Title size={14}>{label}</Title>
                     {description && <Title size={12} color={colors.text[1]} fontFamily="Poppins-Regular">{description}</Title>}
                 </View>
