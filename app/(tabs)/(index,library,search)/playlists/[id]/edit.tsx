@@ -7,16 +7,51 @@ import { Input } from '@/lib/components/Input';
 import { useApi, useColors, useCoverBuilder, useMemoryCache, useTabsHeight } from '@lib/hooks';
 import { useFocusEffect, useLocalSearchParams, router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Keyboard, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Keyboard, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import * as Haptics from 'expo-haptics';
 import showToast from '@lib/showToast';
 import { Child, SearchResult3 } from '@lib/types';
 import { IconCircleMinus, IconCirclePlus, IconMenu, IconPlus, IconSearch, IconX } from '@tabler/icons-react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type SongEntry = Child & { _key: string };
+
+function DragItem({ item, drag, isActive, getIndex, cover, colors, styles, removeSong }: RenderItemParams<SongEntry> & { cover: any, colors: any, styles: any, removeSong: (index: number) => void }) {
+    const index = getIndex() ?? 0;
+    const animatedStyle = useAnimatedStyle(() => ({
+        backgroundColor: withTiming(
+            isActive ? colors.secondaryBackground : 'transparent',
+            { duration: 250 }
+        ),
+    }), [isActive, colors.secondaryBackground]);
+
+    return (
+        <Animated.View style={[styles.item, animatedStyle]}>
+            <TouchableOpacity onLongPress={drag} delayLongPress={100}>
+                <IconMenu size={20} color={colors.text[1]} />
+            </TouchableOpacity>
+            <Cover
+                source={{ uri: cover.generateUrl(item.coverArt ?? '', { size: 128 }) }}
+                cacheKey={item.coverArt ? `${item.coverArt}-128x128` : 'empty-128x128'}
+                size={44}
+                radius={6}
+                withShadow={false}
+            />
+            <View style={styles.itemMeta}>
+                <Title size={14} numberOfLines={1}>{item.title}</Title>
+                <Title size={12} fontFamily="Poppins-Regular" color={colors.text[1]} numberOfLines={1}>{item.artist}</Title>
+            </View>
+            <TouchableOpacity onPress={() => removeSong(index)} hitSlop={8}>
+                <IconCircleMinus size={22} color={colors.danger} />
+            </TouchableOpacity>
+        </Animated.View>
+    );
+}
 
 export default function EditPlaylist() {
     const { id } = useLocalSearchParams();
@@ -191,7 +226,8 @@ export default function EditPlaylist() {
         item: {
             flexDirection: 'row',
             alignItems: 'center',
-            paddingVertical: 6,
+            paddingVertical: 8,
+            paddingHorizontal: 20,
             gap: 10,
         },
         itemActive: {
@@ -263,30 +299,9 @@ export default function EditPlaylist() {
     }, [cover, colors, styles, songs, addSongFromSearch]);
 
     // Playlist song item with drag handle and remove
-    const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<SongEntry>) => {
-        const index = getIndex() ?? 0;
-        return (
-            <View style={[styles.item, isActive && styles.itemActive]}>
-                <TouchableOpacity onLongPress={drag} delayLongPress={100}>
-                    <IconMenu size={20} color={colors.text[1]} />
-                </TouchableOpacity>
-                <Cover
-                    source={{ uri: cover.generateUrl(item.coverArt ?? '', { size: 128 }) }}
-                    cacheKey={item.coverArt ? `${item.coverArt}-128x128` : 'empty-128x128'}
-                    size={44}
-                    radius={6}
-                    withShadow={false}
-                />
-                <View style={styles.itemMeta}>
-                    <Title size={14} numberOfLines={1}>{item.title}</Title>
-                    <Title size={12} fontFamily="Poppins-Regular" color={colors.text[1]} numberOfLines={1}>{item.artist}</Title>
-                </View>
-                <TouchableOpacity onPress={() => removeSong(index)} hitSlop={8}>
-                    <IconCircleMinus size={22} color={colors.danger} />
-                </TouchableOpacity>
-            </View>
-        );
-    }, [cover, colors, styles, removeSong]);
+    const renderItem = useCallback((props: RenderItemParams<SongEntry>) => (
+        <DragItem {...props} cover={cover} colors={colors} styles={styles} removeSong={removeSong} />
+    ), [cover, colors, styles, removeSong]);
 
     return (
         <Container includeBottom={false}>
@@ -323,14 +338,15 @@ export default function EditPlaylist() {
                             </TouchableOpacity>
                         </View>
 
-                        <GestureHandlerRootView style={{ flex: 1 }}>
+                        <GestureHandlerRootView style={{ flex: 1, marginHorizontal: -20 }}>
                             <DraggableFlatList
                                 data={songs}
                                 keyExtractor={(item) => item._key}
                                 renderItem={renderItem}
                                 onDragBegin={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)}
                                 onDragEnd={({ data }) => setSongs(data)}
-                                animationConfig={{ duration: 150 }}
+                                itemEnteringAnimation={FadeIn.duration(200)}
+                                itemExitingAnimation={FadeOut.duration(150)}
                                 ListFooterComponent={<View style={{ height: 10 }} />}
                             />
                         </GestureHandlerRootView>
@@ -356,7 +372,7 @@ export default function EditPlaylist() {
                                 {recommendations.length > 0 && (
                                     <Title size={15} fontFamily="Poppins-SemiBold" style={{ marginBottom: 8 }}>Recommended</Title>
                                 )}
-                                <FlatList
+                                <LegendList
                                     data={recommendations}
                                     keyExtractor={(item) => `rec-${item.id}`}
                                     renderItem={renderSearchItem}
@@ -367,10 +383,12 @@ export default function EditPlaylist() {
                                             <Title size={14} fontFamily="Poppins-Regular" color={colors.text[1]}>Loading recommendations...</Title>
                                         </View>
                                     }
+                                    estimatedItemSize={62}
+                                    recycleItems
                                 />
                             </>
                         ) : (
-                            <FlatList
+                            <LegendList
                                 data={searchResults}
                                 keyExtractor={(item) => item.id}
                                 renderItem={renderSearchItem}
@@ -381,6 +399,8 @@ export default function EditPlaylist() {
                                         <Title size={14} fontFamily="Poppins-Regular" color={colors.text[1]}>No results found</Title>
                                     </View>
                                 }
+                                estimatedItemSize={62}
+                                recycleItems
                             />
                         )}
                     </View>
