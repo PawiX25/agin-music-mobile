@@ -41,13 +41,11 @@ function NewPlaylsitSheet({ sheetId, payload }: SheetProps<'newPlaylist'>) {
 
             const res = await api.get('/createPlaylist', { params });
             const playlistId = res.data?.['subsonic-response']?.playlist?.id as string;
-            console.log({ res, params });
 
             await cache.refreshPlaylists();
 
             SheetManager.hide(sheetId, { payload: { created: true, id: playlistId, name } });
         } catch (error) {
-            console.log(error);
 
         }
         setLoading(false);

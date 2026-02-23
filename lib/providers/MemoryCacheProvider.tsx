@@ -64,7 +64,6 @@ export default function MemoryCacheProvider({ children }: { children?: React.Rea
 
     const refreshPlaylist = useCallback(async (id: string) => {
         if (!api) return;
-        console.log('[MemoryCache] Fetching playlist', id);
 
         const playlistRes = await api.get('/getPlaylist', { params: { id } });
         const playlist = playlistRes.data?.['subsonic-response']?.playlist as PlaylistWithSongs;
@@ -77,7 +76,6 @@ export default function MemoryCacheProvider({ children }: { children?: React.Rea
     const refreshAlbums = useCallback(async () => {
         // TODO: Add pagination support
         if (!api) return;
-        console.log('[MemoryCache] Fetching albums');
 
         const albumsRes = await api.get('/getAlbumList2', { params: { type: 'newest', size: 500 } });
         const albums = albumsRes.data?.['subsonic-response']?.albumList2?.album as AlbumID3[];
@@ -89,7 +87,6 @@ export default function MemoryCacheProvider({ children }: { children?: React.Rea
 
     const refreshAlbum = useCallback(async (id: string) => {
         if (!api) return;
-        console.log('[MemoryCache] Fetching album');
 
         const albumRes = await api.get('/getAlbum', { params: { id } });
         const album = albumRes.data?.['subsonic-response']?.album as AlbumWithSongsID3;
@@ -101,7 +98,6 @@ export default function MemoryCacheProvider({ children }: { children?: React.Rea
 
     const refreshArtists = useCallback(async () => {
         if (!api) return;
-        console.log('[MemoryCache] Fetching artists');
 
         const artistsRes = await api.get('/getArtists');
         const artistsData = artistsRes.data?.['subsonic-response']?.artists as ArtistsID3;
@@ -114,7 +110,6 @@ export default function MemoryCacheProvider({ children }: { children?: React.Rea
 
     const refreshSongs = useCallback(async () => {
         if (!api) return;
-        console.log('[MemoryCache] Fetching songs');
 
         const songsRes = await api.get('/getRandomSongs', { params: { size: 500 } });
         const songs = songsRes.data?.['subsonic-response']?.randomSongs?.song as Child[];

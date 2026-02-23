@@ -32,7 +32,7 @@ export default function SycnedLyricsView({ lyrics }: LyricsViewProps) {
 
     useEffect(() => {
         const interval = setInterval(async () => {
-            if (isLocked.current) return console.log('locked :(');
+            if (isLocked.current) return;
 
             const playerState = await TrackPlayer.getState();
             const position = playerState?.currentPosition ?? 0;

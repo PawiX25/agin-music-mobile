@@ -129,7 +129,6 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     useEffect(() => {
         (async () => {
             if (nowPlaying.id == '' || !api) return;
-            console.log('scrobbling', nowPlaying.id);
 
             await api.get('/scrobble', { params: { id: nowPlaying.id } });
         })();
@@ -196,7 +195,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
                 });
             }
         } catch (e) {
-            console.log('updateNowPlaying error', e);
+            // Error updating now playing
         }
     }, []);
 
@@ -216,7 +215,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             })) as TQueueItem[];
             setQueue(enrichedQueue);
         } catch (e) {
-            console.log('updateQueue error', e);
+            // Error updating queue
         }
     }, []);
 
@@ -226,7 +225,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             const currentIndex = state?.currentIndex ?? 0;
             setActiveIndex(currentIndex);
         } catch (e) {
-            console.log('updateActive error', e);
+            // Error updating active index
         }
     }, []);
 
@@ -322,7 +321,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             await updateQueue();
             await updateActive();
         } catch (e) {
-            console.log('modifyQueue error', e);
+            // Error modifying queue
         }
     }, [loadTracks]);
 
@@ -347,7 +346,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
                 return prevIndex;
             });
         } catch (e) {
-            console.log('reorder error', e);
+            // Error reordering queue
         }
     }, [queue]);
 
@@ -460,8 +459,6 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     }, [clear]);
 
     const jumpTo = useCallback(async (index: number) => {
-        console.log('jumping to', index);
-
         await TrackPlayer.skipToIndex(index);
         await updateActive();
         await updateNowPlaying();
@@ -507,8 +504,6 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     }, [queue, nowPlaying, cache]);
 
     const toggleStar = useCallback(async () => {
-        console.log('toggle', nowPlaying.starred);
-
         if (!nowPlaying.id) return;
 
         await setStarred(!nowPlaying.starred);

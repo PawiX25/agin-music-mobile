@@ -25,8 +25,6 @@ async function getServer() {
         server = { ...server, ...serverInfo };
     }
 
-    console.log('stored', serverStored);
-
     const storedPassword = await SecureStore.getItemAsync('password');
     if (storedPassword) {
         server.auth = { ...server.auth, password: storedPassword };
@@ -69,8 +67,6 @@ export async function renderPinned(pins?: Pin[]) {
         ...pin,
         coverArt: buildUrl(pin.id, { server, salt, hash, size: 256 }),
     }));
-
-    console.log('Prepared pins:', preparedPins);
 
     return (
         <Pinned pins={preparedPins} colorScheme={colorScheme} />

@@ -47,7 +47,6 @@ export default function PinsProvider({ children }: { children?: React.ReactNode 
     }, []);
 
     const updateWidget = useCallback(async () => {
-        console.log('Updating widget...');
         if (Platform.OS !== 'android') return;
 
         const widget = await renderPinned(pins);

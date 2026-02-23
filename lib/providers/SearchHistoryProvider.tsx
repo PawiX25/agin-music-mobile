@@ -35,17 +35,12 @@ export default function SearchHistoryProvider({ children }: { children: React.Re
     useEffect(() => {
         (async () => {
             const result = await db.getAllAsync<SearchHistoryItem>('SELECT * FROM searchHistory ORDER BY searchedAt DESC');
-            console.log('_history', result)
-
             setItems(result);
         })();
     }, []);
 
     const addItem = useCallback(async (item: SearchHistoryItem) => {
-        console.log({ item });
-
         const exists = await db.getFirstSync('SELECT * FROM searchHistory WHERE id = $id', { $id: item.id });
-        console.log({ exists });
 
         if (exists) {
             // TODO

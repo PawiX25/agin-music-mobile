@@ -12,7 +12,6 @@ export type PinnedProps = {
 
 export function Pinned({ pins, colorScheme }: PinnedProps) {
     const colors = Colors[colorScheme ?? 'light'];
-    console.log('Rendering widget...', { pins, colorScheme });
 
     return (
         <FlexWidget

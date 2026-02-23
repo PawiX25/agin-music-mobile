@@ -56,8 +56,6 @@ export function useApiHelpers() {
     };
 
     const star = useCallback(async (id: string, type: 'track' | 'album' | 'artist', action: 'star' | 'unstar' = 'star') => {
-        console.log('star', id, type, action);
-
         if (!api) return;
         await api.get(`/${action === 'star' ? 'star' : 'unstar'}`, {
             params: {

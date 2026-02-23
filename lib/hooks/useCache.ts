@@ -11,7 +11,6 @@ export function useCache() {
     const api = useApi();
 
     const cacheChild = useCallback(async (child: Child) => {
-        console.log('[cache] Saving ', child.id);
         const row = await db.getFirstAsync('SELECT * FROM childrenCache WHERE id = $id', { $id: child.id });
         if (row) await db.runAsync('UPDATE childrenCache SET data = $data WHERE id = $id', { $id: child.id, $data: JSON.stringify(child) });
         else await db.runAsync('INSERT INTO childrenCache (id, data) VALUES ($id, $data)', { $id: child.id, $data: JSON.stringify(child) });
@@ -27,18 +26,14 @@ export function useCache() {
     }, [db]);
 
     const fetchChild = useCallback(async (id: string, forceRefresh: boolean = false): Promise<Child | undefined> => {
-        console.log('[cache] requesting ', id);
-
         if (!api) return;
 
         if (!forceRefresh) {
             const cached = await getChild(id);
             if (cached) {
-                console.log('[cache] HIT ', id);
                 return cached;
             }
         }
-        console.log(`[cache] MISS${forceRefresh ? ' (force refreshing)' : ''}`, id);
 
         const child = await api.get('/getSong', { params: { id } });
         const childData = child.data?.['subsonic-response']?.song as Child | undefined;
@@ -65,13 +60,11 @@ export function useCache() {
     }, [db]);
 
     const getLyrics = useCallback(async (songId: string): Promise<StructuredLyrics[] | null> => {
-        console.log('[lyricsCache] getting ', songId);
         const row = await db.getFirstAsync<{ id: string, data: string, updatedAt: Date }>('SELECT * FROM lyricsCache WHERE id = $id', { $id: songId });
 
         if (!row) return null;
 
         if (row.updatedAt < new Date(new Date().getTime() - 1000 * 60 * 60 * 24 * 7)) {
-            console.log('[lyricsCache] Expired, refetching');
 
             (async () => {
                 const lyrics = await rawFetchLyrics(songId);
@@ -85,16 +78,12 @@ export function useCache() {
 
     const fetchLyrics = useCallback(async (id: string): Promise<StructuredLyrics[] | undefined> => {
         try {
-            console.log('[lyricsCache] requesting ', id);
-
             if (!api) return;
 
             const cached = await getLyrics(id);
             if (cached) {
-                console.log('[lyricsCache] HIT ', id);
                 return cached;
             }
-            console.log('[lyricsCache] MISS ', id);
 
             const lyrics = await rawFetchLyrics(id);
             if (!lyrics) return;

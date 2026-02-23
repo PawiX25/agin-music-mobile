@@ -24,7 +24,6 @@ export function useSetupPlayer({ onLoad }: useSetupPlayerProps) {
                 isInitialized.current = true;
                 onLoad?.();
             } catch (error) {
-                console.log(error);
                 isInitialized.current = false;
             }
         })();

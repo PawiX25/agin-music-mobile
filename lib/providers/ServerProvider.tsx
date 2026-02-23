@@ -87,8 +87,6 @@ export default function ServerProvider({ children }: { children?: React.ReactNod
                     updatedServer = { ...updatedServer, ...serverInfo };
                 }
 
-                console.log('stored', serverStored);
-
                 const storedPassword = await SecureStore.getItemAsync('password');
                 if (storedPassword) {
                     updatedServer.auth = { ...updatedServer.auth, password: storedPassword };
@@ -187,7 +185,6 @@ export default function ServerProvider({ children }: { children?: React.ReactNod
         // TODO: Add error handling
         const url = serverOverride ? serverOverride : server.url;
         const authMethod = authMethodOverride ?? server.authMethod;
-        console.log(url);
 
         if (authMethod === 'password') {
             try {
@@ -202,19 +199,15 @@ export default function ServerProvider({ children }: { children?: React.ReactNod
                 });
                 const res = rawRes.data['subsonic-response'] as BaseResponse;
                 if (res.status != 'ok') return false;
-                console.log('ok');
 
                 setServer(s => ({ ...s, auth: { ...s.auth, username, password }, authMethod: 'password' }));
             } catch (error) {
-                console.log('data', (error as any).response.data);
-                console.log('legacy auth error', error);
                 return false;
             }
             return true;
         }
 
         const { salt, hash } = await generateSubsonicToken(password);
-        console.log('TESTING1', username, password, salt, hash, url);
 
         try {
             const rawRes = await axios.get(`${url}/rest/ping`, {
@@ -229,20 +222,9 @@ export default function ServerProvider({ children }: { children?: React.ReactNod
             });
             const res = rawRes.data['subsonic-response'] as BaseResponse;
             if (res.status != 'ok') return false;
-            console.log('ok');
 
             setServer(s => ({ ...s, auth: { ...s.auth, username, password } }));
         } catch (error) {
-            console.log('data', (error as any).response.data);
-
-            console.log('fbghdfgfgdfghdfghsdf', error, {
-                c: `${config.clientName}/${config.clientVersion}`,
-                f: 'json',
-                v: config.protocolVersion,
-                u: username,
-                t: hash,
-                s: salt,
-            });
             return false;
         }
         return true;

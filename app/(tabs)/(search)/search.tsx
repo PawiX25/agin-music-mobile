@@ -148,8 +148,6 @@ export default function Search() {
     const inputRef = useRef<TextInput>(null);
 
     useFocusEffect(useCallback(() => {
-        console.log({ autoFocus });
-
         if (!autoFocus) return;
         inputRef.current?.focus();
     }, [autoFocus]));
