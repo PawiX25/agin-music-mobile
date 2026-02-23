@@ -1,4 +1,5 @@
 import Container from '@lib/components/Container';
+import FullscreenMessage from '@lib/components/FullscreenMessage';
 import Header from '@lib/components/Header';
 import { Input } from '@lib/components/Input';
 import MediaLibraryList from '@lib/components/MediaLibraryList';
@@ -142,7 +143,7 @@ export default function Search() {
         },
         main: {
             flex: 1,
-        }
+        },
     }), []);
 
     const inputRef = useRef<TextInput>(null);
@@ -159,13 +160,14 @@ export default function Search() {
                     <Input compact icon={IconSearch} placeholder='Search songs, artists, albums...' autoFocus={!!autoFocus} ref={inputRef} clearButtonMode='always' value={query} onChangeText={setQuery} />
                 </Header>
                 {/* Had to do this beacuse Navidrome returns empty response for one character queries */}
-                {query.length > 1 && <Animated.View entering={entering} exiting={exiting}>
+                {query.length > 1 && <Animated.View style={styles.main} entering={entering} exiting={exiting}>
                     <TagTabs data={tabs} tab={tab} onChange={setTab} keyboardShouldPersistTaps='handled' />
                     <MediaLibraryList data={filteredResults} onItemPress={actions.press} size='medium' keyboardShouldPersistTaps='handled' rightSection={SearchRightSection} />
                 </Animated.View>}
-                {query.length <= 1 && <Animated.View style={styles.history} entering={entering} exiting={exiting}>
+                {query.length <= 1 && <Animated.View style={[styles.history, styles.main]} entering={entering} exiting={exiting}>
                     {mappedHistory.length !== 0 && <SearchSection label='Recently Searched' action={{ label: 'Clear', onPress: async () => await history.clearAll() }} />}
-                    <MediaLibraryList data={mappedHistory} onItemPress={(item) => actions.press(item, { addToHistory: false })} size='medium' withTopMargin={false} keyboardShouldPersistTaps='handled' rightSection={SearchRightSection} />
+                    {mappedHistory.length === 0 && <FullscreenMessage icon={IconSearch} label="Search" description="Search for songs, artists, albums..." />}
+                    {mappedHistory.length !== 0 && <MediaLibraryList data={mappedHistory} onItemPress={(item) => actions.press(item, { addToHistory: false })} size='medium' withTopMargin={false} keyboardShouldPersistTaps='handled' rightSection={SearchRightSection} />}
                 </Animated.View>}
             </KeyboardAvoidingView>
         </Container>
