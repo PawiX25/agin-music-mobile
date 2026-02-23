@@ -2,8 +2,6 @@ import React, { useContext, useEffect, useMemo } from 'react';
 import MediaLibraryList, { LibLayout } from '@lib/components/MediaLibraryList';
 import { TMediaLibItem } from '@lib/components/MediaLibraryList/Item';
 import { useCoverBuilder, useHomeItemActions, useMemoryCache } from '@/lib/hooks';
-import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
 
 export function SongsTab() {
     const cache = useMemoryCache();
@@ -23,12 +21,10 @@ export function SongsTab() {
     })), [cache.cache.allSongs, cover]);
 
     useEffect(() => {
-        cache.refreshSongs();
+        if (cache.cache.allSongs.length === 0) {
+            cache.refreshSongs();
+        }
     }, [cache.refreshSongs]);
-
-    useFocusEffect(useCallback(() => {
-        cache.refreshSongs();
-    }, [cache.refreshSongs]));
 
     return (
         <MediaLibraryList
@@ -36,6 +32,7 @@ export function SongsTab() {
             onItemPress={press}
             onItemLongPress={longPress}
             layout={layout}
+            extraData={cache.cache.allSongs}
         />
     )
 }

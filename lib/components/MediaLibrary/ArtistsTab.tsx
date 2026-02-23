@@ -35,6 +35,7 @@ export function ArtistsTab() {
             onItemPress={press}
             onItemLongPress={longPress}
             layout={layout}
+            extraData={cache.cache.allArtists}
         />
     )
 }
