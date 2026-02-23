@@ -84,6 +84,8 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
     const storage = useDownloadStorage();
 
     const wifiOnlySetting = useSetting('downloads.wifiOnly');
+    const maxBitRate = useSetting('downloads.maxBitRate') as string | undefined;
+    const streamingFormat = useSetting('downloads.format') as string | undefined;
     const [isOnWifi, setIsOnWifi] = useState(true);
     const [pendingDownloadCount, setPendingDownloadCount] = useState(0);
     const pendingDownloadsRef = useRef<{ child: Child; playlistId?: string }[]>([]);
@@ -299,7 +301,14 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
     }, []);
 
     const convertToTrackItem = useCallback((child: Child): TrackItem => {
-        const streamUrl = `${server.url}/rest/stream?${qs.stringify({ id: child.id, ...params })}`;
+        const streamParams: any = { id: child.id, ...params };
+        if (maxBitRate && maxBitRate !== '0') {
+            streamParams.maxBitRate = maxBitRate;
+        }
+        if (streamingFormat && streamingFormat !== 'raw') {
+            streamParams.format = streamingFormat;
+        }
+        const streamUrl = `${server.url}/rest/stream?${qs.stringify(streamParams)}`;
         return {
             id: child.id,
             title: child.title ?? '',
@@ -310,7 +319,7 @@ export default function DownloadProvider({ children }: { children?: React.ReactN
             artwork: cover.generateUrl(child.coverArt || child.id),
             extraPayload: { _child: child } as any,
         };
-    }, [server.url, params, cover.generateUrl]);
+    }, [server.url, params, cover.generateUrl, maxBitRate, streamingFormat]);
 
     const downloadTrack = useCallback(async (child: Child, playlistId?: string) => {
         if (DownloadManager.isTrackDownloaded(child.id)) {

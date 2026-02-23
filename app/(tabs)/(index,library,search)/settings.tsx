@@ -44,7 +44,7 @@ const defaultLibraryTabOptions: SettingSelectOption[] = [
     { label: 'Songs', description: 'All songs', value: 'songs', shortLabel: 'Songs' },
 ];
 
-export type SettingId = 'streaming.maxBitRate' | 'streaming.format' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar' | 'app.defaultTab' | 'app.defaultLibraryTab' | 'eq.enabled' | 'downloads.wifiOnly' | 'app.persistQueue';
+export type SettingId = 'streaming.maxBitRate' | 'streaming.format' | 'storage.clearCache' | 'developer.copyId' | 'ui.toastPosition' | 'ui.autoFocusSearchBar' | 'app.defaultTab' | 'app.defaultLibraryTab' | 'eq.enabled' | 'downloads.wifiOnly' | 'app.persistQueue' | 'downloads.maxBitRate' | 'downloads.format';
 
 const EQ_PRESETS: Record<string, number[]> = {
     Flat:      [0, 0, 0, 0, 0],
@@ -253,6 +253,24 @@ export default function Settings() {
                         label='Wi-Fi Only Downloads'
                         description='Only download music when connected to Wi-Fi'
                         icon={IconWifi}
+                    />
+                    <Setting
+                        id='downloads.maxBitRate'
+                        type='select'
+                        label='Max Bitrate'
+                        description='Maximum download bitrate (requires server transcoding)'
+                        icon={IconVolume}
+                        defaultValue='0'
+                        options={maxBitRateOptions}
+                    />
+                    <Setting
+                        id='downloads.format'
+                        type='select'
+                        label='Preferred Format'
+                        description='Preferred audio format for downloaded music'
+                        icon={IconFileMusic}
+                        defaultValue='raw'
+                        options={formatOptions}
                     />
                     <SettingsSection label='Storage' />
                     <Setting
