@@ -18,6 +18,7 @@ export default function GridCompactItem({ title, subtitle, coverUri, coverCacheK
             flex: 1 / 3,
             overflow: 'hidden',
             position: 'relative',
+            borderRadius: 15,
         },
         metadata: {
             position: 'absolute',
@@ -45,8 +46,8 @@ export default function GridCompactItem({ title, subtitle, coverUri, coverCacheK
                 withShadow={false}
             />
             <View style={styles.metadata}>
-                {subtitle && <Title size={12} color={colors.text[1]} fontFamily='Poppins-Regular' numberOfLines={1}>{subtitle}</Title>}
-                <Title size={14} numberOfLines={1}>{title}</Title>
+                {subtitle && <Title size={12} color="#ccc" fontFamily='Poppins-Regular' numberOfLines={1}>{subtitle}</Title>}
+                <Title size={14} color="#fff" numberOfLines={1}>{title}</Title>
             </View>
             <LinearGradient style={styles.gradient} colors={['#00000000', '#00000080']} />
         </View>
