@@ -1,6 +1,6 @@
 import Container from '@lib/components/Container';
 import Header from '@lib/components/Header';
-import { Pinned, Playlists, Random } from '@lib/components/HomeSections';
+import { Pinned, Playlists, Random, RecentlyAdded, RecentlyPlayed } from '@lib/components/HomeSections';
 import { useQueue, useServer, useTabsHeight } from '@lib/hooks';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo } from 'react';
@@ -36,6 +36,8 @@ export default function Home() {
             <ScrollView style={styles.main}>
                 <Header title="Home" withAvatar />
                 <Pinned />
+                <RecentlyPlayed />
+                <RecentlyAdded />
                 <Playlists />
                 <Random />
                 <View style={styles.spacer}></View>
