@@ -44,8 +44,8 @@ export default function Queue() {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item, ...props }) => <QueueItem item={item._child} {...props} />}
                 onDragEnd={handleDragEnd}
-                itemEnteringAnimation={FadeIn.duration(300)}
-                itemExitingAnimation={FadeOut.duration(250)}
+                itemEnteringAnimation={FadeIn.duration(200)}
+                itemExitingAnimation={FadeOut.duration(150)}
             />
         </View>
     )
