@@ -5,9 +5,10 @@ import QueueItem from './QueueItem';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { GestureEnabledContext } from '@/lib/sheets/playback';
 import { TQueueItem } from '@lib/providers/QueueProvider';
+import { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 export default function Queue() {
-    const { queue, setQueue } = useQueue();
+    const { queue, setQueue, reorder } = useQueue();
 
     const [delayedQueue, setDelayedQueue] = useState<TQueueItem[]>(queue ?? []);
 
@@ -23,11 +24,11 @@ export default function Queue() {
         },
     }), []);
 
-    const handleDragEnd = useCallback(({ data }: { data: TQueueItem[] }) => {
-        setQueue(data);
+    const handleDragEnd = useCallback(({ data, from, to }: { data: TQueueItem[], from: number, to: number }) => {
         setDelayedQueue(data);
+        reorder(from, to);
         setGestureEnabled(true);
-    }, [setQueue, setGestureEnabled]);
+    }, [reorder, setGestureEnabled]);
 
     useEffect(() => {
         setDelayedQueue(queue);
@@ -40,9 +41,12 @@ export default function Queue() {
                 style={styles.list}
                 data={delayedQueue ?? []}
                 windowSize={3}
-                keyExtractor={(item, index) => `${item._child.id}-${index}`}
+                keyExtractor={(item) => item.id}
                 renderItem={({ item, ...props }) => <QueueItem item={item._child} {...props} />}
                 onDragEnd={handleDragEnd}
+                itemEnteringAnimation={FadeIn.duration(300)}
+                itemExitingAnimation={FadeOut.duration(250)}
+                itemLayoutAnimation={LinearTransition.duration(250)}
             />
         </View>
     )

@@ -57,6 +57,7 @@ export type QueueContextType = {
     changeRepeatMode: (mode: RepeatModeValue) => Promise<void>;
     cycleRepeatMode: () => Promise<void>;
     toggleStar: () => Promise<void>;
+    reorder: (from: number, to: number) => void;
 }
 
 const initialQueueContext: QueueContextType = {
@@ -84,6 +85,7 @@ const initialQueueContext: QueueContextType = {
     changeRepeatMode: async () => { },
     cycleRepeatMode: async () => { },
     toggleStar: async () => { },
+    reorder: () => { },
 }
 
 export const QueueContext = createContext<QueueContextType>(initialQueueContext);
@@ -144,17 +146,20 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         return `${server.url}/rest/stream?${qs.stringify({ ...params, ...streamParams })}`;
     }, [params, server.url, maxBitRate, streamingFormat]);
 
-    const convertToTrackItem = useCallback((data: Child): TQueueItem => ({
-        id: data.id,
-        title: data.title ?? '',
-        artist: data.artist ?? '',
-        album: data.album ?? '',
-        duration: data.duration ?? 0,
-        url: generateMediaUrl({ id: data.id }),
-        artwork: cover.generateUrl(data.coverArt || data.id),
-        extraPayload: { _child: data },
-        _child: data,
-    }), [generateMediaUrl, cover.generateUrl]);
+    const convertToTrackItem = useCallback((data: Child): TQueueItem => {
+        const uniqueId = `${data.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        return {
+            id: uniqueId,
+            title: data.title ?? '',
+            artist: data.artist ?? '',
+            album: data.album ?? '',
+            duration: data.duration ?? 0,
+            url: generateMediaUrl({ id: data.id }),
+            artwork: cover.generateUrl(data.coverArt || data.id),
+            extraPayload: { _child: data },
+            _child: data,
+        };
+    }, [generateMediaUrl, cover.generateUrl]);
 
     const loadTracks = useCallback((tracks: TQueueItem[]) => {
         try { PlayerQueue.deletePlaylist(playlistIdRef.current); } catch (e) {}
@@ -164,7 +169,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             PlayerQueue.addTracksToPlaylist(newId, tracks);
         }
         PlayerQueue.loadPlaylist(newId);
-        tracks.forEach(t => trackChildMapRef.current.set(t._child.id, t._child));
+        tracks.forEach(t => trackChildMapRef.current.set(t.id, t._child));
     }, []);
 
     const updateNowPlaying = useCallback(async () => {
@@ -321,12 +326,25 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         }
     }, [loadTracks]);
 
+    const reorder = useCallback(async (from: number, to: number) => {
+        try {
+            const track = queue[from];
+            if (!track) return;
+
+            PlayerQueue.reorderTrackInPlaylist(playlistIdRef.current, track.id, to);
+            await updateQueue();
+            await updateActive();
+        } catch (e) {
+            console.log('reorder error', e);
+        }
+    }, [queue, updateQueue, updateActive]);
+
     const add = useCallback(async (id: string) => {
         const data = await cache.fetchChild(id);
         if (!data) return false;
 
         const trackItem = convertToTrackItem(data);
-        trackChildMapRef.current.set(data.id, data);
+        trackChildMapRef.current.set(trackItem.id, data);
         const currentQueue = await TrackPlayer.getActualQueue();
 
         if (!currentQueue || currentQueue.length === 0) {
@@ -347,7 +365,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         if (!data) return false;
 
         const trackItem = convertToTrackItem(data);
-        trackChildMapRef.current.set(data.id, data);
+        trackChildMapRef.current.set(trackItem.id, data);
         PlayerQueue.addTrackToPlaylist(playlistIdRef.current, trackItem);
         await TrackPlayer.playNext(trackItem.id);
 
@@ -520,6 +538,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             changeRepeatMode,
             cycleRepeatMode,
             toggleStar,
+            reorder,
         }}>
             {children}
         </QueueContext.Provider>

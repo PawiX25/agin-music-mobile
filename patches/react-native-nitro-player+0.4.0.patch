@@ -1,3 +1,37 @@
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
+index 286babf..445c130 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/core/TrackPlayerCore.kt
+@@ -415,6 +415,29 @@ class TrackPlayerCore private constructor(
+         }
+     }
+ 
++    /**
++     * Reorder a track in the player queue without interrupting playback
++     */
++    fun reorderPlaylist(playlistId: String, oldIndex: Int, newIndex: Int) {
++        handler.post {
++            if (currentPlaylistId == playlistId) {
++                val playlist = playlistManager.getPlaylist(playlistId)
++                if (playlist != null) {
++                    currentTracks = playlist.tracks
++                    
++                    if (playNextStack.isEmpty() && upNextQueue.isEmpty()) {
++                        if (oldIndex >= 0 && newIndex >= 0 && oldIndex < player.mediaItemCount && newIndex < player.mediaItemCount) {
++                            player.moveMediaItem(oldIndex, newIndex)
++                        }
++                    } else {
++                        // Fallback to full update if there are temporary tracks
++                        updatePlayerQueue(playlist.tracks)
++                    }
++                }
++            }
++        }
++    }
++
+     /**
+      * Get current playlist ID
+      */
 diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/download/DownloadWorker.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/download/DownloadWorker.kt
 index 8691515..0637708 100644
 --- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/download/DownloadWorker.kt
@@ -38,6 +72,53 @@ index 8691515..0637708 100644
                      outputStream.write(buffer, 0, bytesRead)
                      bytesDownloaded += bytesRead
  
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt
+index 0357cd1..d11425a 100644
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/playlist/PlaylistManager.kt
+@@ -290,7 +290,7 @@ class PlaylistManager private constructor(
+ 
+         // Update ExoPlayer if this is the current playlist
+         if (currentPlaylistId == playlistId) {
+-            TrackPlayerCore.getInstance(context)?.updatePlaylist(playlistId)
++            TrackPlayerCore.getInstance(context)?.reorderPlaylist(playlistId, oldIndex, newIndex)
+         }
+ 
+         return true
+diff --git a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
+index 8677316..3f703b3 100644
+--- a/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
++++ b/node_modules/react-native-nitro-player/ios/core/TrackPlayerCore.swift
+@@ -651,6 +651,29 @@ class TrackPlayerCore: NSObject {
+     }
+   }
+ 
++  func reorderPlaylist(playlistId: String, oldIndex: Int, newIndex: Int) {
++    DispatchQueue.main.async { [weak self] in
++      guard let self = self else { return }
++      if self.currentPlaylistId == playlistId {
++        let playlist = self.playlistManager.getPlaylist(playlistId: playlistId)
++        if let playlist = playlist {
++          self.currentTracks = playlist.tracks
++          
++          // Update currentTrackIndex if necessary
++          if self.currentTrackIndex == oldIndex {
++            self.currentTrackIndex = newIndex
++          } else if self.currentTrackIndex > oldIndex && self.currentTrackIndex <= newIndex {
++            self.currentTrackIndex -= 1
++          } else if self.currentTrackIndex >= newIndex && self.currentTrackIndex < oldIndex {
++            self.currentTrackIndex += 1
++          }
++          
++          self.rebuildAVQueueFromCurrentPosition()
++        }
++      }
++    }
++  }
++
+   // MARK: - Public Methods
+ 
+   func getCurrentPlaylistId() -> String? {
 diff --git a/node_modules/react-native-nitro-player/ios/equalizer/EqualizerCore.swift b/node_modules/react-native-nitro-player/ios/equalizer/EqualizerCore.swift
 index bbfc1d3..b3de54a 100644
 --- a/node_modules/react-native-nitro-player/ios/equalizer/EqualizerCore.swift
@@ -60,6 +141,19 @@ index bbfc1d3..b3de54a 100644
          print("❌ EqualizerCore: Failed to create audio processing tap, status: \(createStatus)")
          return
        }
+diff --git a/node_modules/react-native-nitro-player/ios/playlist/PlaylistManager.swift b/node_modules/react-native-nitro-player/ios/playlist/PlaylistManager.swift
+index 3a2caf2..870343e 100644
+--- a/node_modules/react-native-nitro-player/ios/playlist/PlaylistManager.swift
++++ b/node_modules/react-native-nitro-player/ios/playlist/PlaylistManager.swift
+@@ -250,7 +250,7 @@ class PlaylistManager {
+ 
+     // Update TrackPlayerCore if this is the current playlist
+     if currentPlaylistId == playlistId {
+-      TrackPlayerCore.shared.updatePlaylist(playlistId: playlistId)
++      TrackPlayerCore.shared.reorderPlaylist(playlistId: playlistId, oldIndex: oldIndex, newIndex: newIndex)
+     }
+ 
+     return true
 diff --git a/node_modules/react-native-nitro-player/src/hooks/useDownloadedTracks.ts b/node_modules/react-native-nitro-player/src/hooks/useDownloadedTracks.ts
 index 5c7f61f..ccd9dc6 100644
 --- a/node_modules/react-native-nitro-player/src/hooks/useDownloadedTracks.ts
