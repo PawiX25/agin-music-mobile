@@ -2,7 +2,7 @@ import { StructuredLyrics } from '@lib/types';
 import LyricsLine from './Line';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { FlatList } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import { TrackPlayer } from 'react-native-nitro-player';
 
 export type LyricsViewProps = {
@@ -16,7 +16,7 @@ export default function SycnedLyricsView({ lyrics }: LyricsViewProps) {
 
     const isLocked = useRef<boolean>(false);
 
-    const listRef = useRef<FlatList>(null);
+    const listRef = useRef<any>(null);
 
     const styles = useMemo(() => StyleSheet.create({
         container: {
@@ -63,7 +63,7 @@ export default function SycnedLyricsView({ lyrics }: LyricsViewProps) {
     }, [activeLine, lyrics?.line, enableAutoScroll]);
 
     return (
-        <FlatList
+        <LegendList
             style={styles.container}
             data={lyrics?.line}
             renderItem={({ item, index }) => <LyricsLine line={item} active={activeLine == index} onPress={async () => {
@@ -90,6 +90,8 @@ export default function SycnedLyricsView({ lyrics }: LyricsViewProps) {
                 }, 3000);
             }}
             ListFooterComponent={() => <View style={styles.footer}></View>}
+            estimatedItemSize={40}
+            recycleItems
         />
     )
 }

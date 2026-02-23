@@ -1,6 +1,6 @@
 import { useColors } from '@lib/hooks';
 import React, { useMemo } from 'react';
-import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import Title from './Title';
 import Avatar from './Avatar';
 import ActionIcon from './ActionIcon';

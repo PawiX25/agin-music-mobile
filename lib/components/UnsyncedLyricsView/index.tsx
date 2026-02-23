@@ -3,7 +3,7 @@ import { StructuredLyrics } from '@lib/types';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Title from '../Title';
-import { FlatList } from 'react-native-actions-sheet';
+import { LegendList } from '@legendapp/list';
 
 export type LyricsViewProps = {
     lyrics: StructuredLyrics;
@@ -29,7 +29,7 @@ export default function UnsyncedLyricsView({ lyrics }: LyricsViewProps) {
 
 
     return (
-        <FlatList
+        <LegendList
             style={styles.container}
             data={lyrics?.line}
             keyExtractor={(item, index) => index.toString()}
@@ -37,6 +37,8 @@ export default function UnsyncedLyricsView({ lyrics }: LyricsViewProps) {
             ItemSeparatorComponent={() => <View style={styles.separator}></View>}
             ListHeaderComponent={() => <View style={styles.header}></View>}
             ListFooterComponent={() => <View style={styles.footer}></View>}
+            estimatedItemSize={30}
+            recycleItems
         />
     )
 }

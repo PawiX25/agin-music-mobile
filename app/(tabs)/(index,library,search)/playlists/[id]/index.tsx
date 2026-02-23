@@ -8,7 +8,8 @@ import MediaLibItem from '@lib/components/MediaLibraryList/Item';
 import { IconDots, IconSearch } from '@tabler/icons-react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { FlatList, View } from 'react-native';
+import { View } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import { SheetManager } from 'react-native-actions-sheet';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, useAnimatedRef, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -21,7 +22,7 @@ export default function Playlist() {
     const cover = useCoverBuilder();
     const queue = useQueue();
     const [tabsHeight] = useTabsHeight();
-    const listRef = useAnimatedRef<FlatList>();
+    const listRef = useAnimatedRef<any>();
 
     const data = useMemo(() => cache.cache.playlists[id as string], [cache.cache.playlists, id]);
 
@@ -104,16 +105,15 @@ export default function Playlist() {
                 <LibLayout.Provider value="list">
                     <LibSize.Provider value="medium">
                         <LibSeparators.Provider value={false}>
-                            <FlatList
+                            <LegendList
                                 data={entryData}
                                 keyExtractor={(item) => item.id ?? `fallback-${Math.random()}`}
                                 ref={listRef}
-                                // windowSize={5}
-                                // getItemCount={() => entryData?.length ?? 0}
-                                getItemLayout={(data, index) => ({ length: 62, offset: 62 * index, index })}
                                 renderItem={renderItem}
                                 ListHeaderComponent={<PlaylistHeader playlist={data} onTitlePress={showContextMenu} />}
                                 ListFooterComponent={<View style={{ height: tabsHeight + 10 }} />}
+                                estimatedItemSize={62}
+                                recycleItems
                             />
                         </LibSeparators.Provider>
                     </LibSize.Provider>

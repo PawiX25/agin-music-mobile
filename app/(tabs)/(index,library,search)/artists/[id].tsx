@@ -8,7 +8,8 @@ import { IconArrowsShuffle, IconDots, IconDownload, IconPlayerPlayFilled } from 
 import { SheetManager } from 'react-native-actions-sheet';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { LegendList } from '@legendapp/list';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, useAnimatedRef, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ArtistWithAlbumsID3, AlbumID3 } from '@lib/types';
@@ -26,7 +27,7 @@ export default function Artist() {
     const downloads = useDownloads();
     const colors = useColors();
     const [tabsHeight] = useTabsHeight();
-    const listRef = useAnimatedRef<FlatList>();
+    const listRef = useAnimatedRef<any>();
     const insets = useSafeAreaInsets();
 
     const [data, setData] = useState<ArtistWithAlbumsID3 | null>(null);
@@ -191,13 +192,15 @@ export default function Artist() {
                 <LibLayout.Provider value="list">
                     <LibSize.Provider value="medium">
                         <LibSeparators.Provider value={false}>
-                            <FlatList
-                                data={data?.album}
+                            <LegendList
+                                data={data?.album ?? []}
                                 keyExtractor={(item) => item.id}
                                 ref={listRef}
                                 renderItem={renderItem}
                                 ListHeaderComponent={ListHeader}
                                 ListFooterComponent={<View style={{ height: tabsHeight + 10 }} />}
+                                estimatedItemSize={62}
+                                recycleItems
                             />
                         </LibSeparators.Provider>
                     </LibSize.Provider>
