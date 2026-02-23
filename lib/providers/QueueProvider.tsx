@@ -332,12 +332,24 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             if (!track) return;
 
             PlayerQueue.reorderTrackInPlaylist(playlistIdRef.current, track.id, to);
-            await updateQueue();
-            await updateActive();
+            
+            setQueue(prevQueue => {
+                const newQueue = [...prevQueue];
+                const [removed] = newQueue.splice(from, 1);
+                newQueue.splice(to, 0, removed);
+                return newQueue;
+            });
+
+            setActiveIndex(prevIndex => {
+                if (from === prevIndex) return to;
+                if (from < prevIndex && to >= prevIndex) return prevIndex - 1;
+                if (from > prevIndex && to <= prevIndex) return prevIndex + 1;
+                return prevIndex;
+            });
         } catch (e) {
             console.log('reorder error', e);
         }
-    }, [queue, updateQueue, updateActive]);
+    }, [queue]);
 
     const add = useCallback(async (id: string) => {
         const data = await cache.fetchChild(id);
