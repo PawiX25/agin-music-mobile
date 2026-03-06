@@ -104,8 +104,6 @@ function PlaybackSheet({ sheetId, payload }: SheetProps<'playback'>) {
                 overdrawEnabled={false}
                 drawUnderStatusBar
                 containerStyle={{ backgroundColor: colors.background, margin: 0, padding: 0, overflow: 'hidden', position: 'relative' }}
-                openAnimationConfig={{ bounciness: 0 }}
-                closeAnimationConfig={{ bounciness: 0 }}
                 isModal={Platform.OS == 'android' ? false : true}
                 CustomHeaderComponent={<View></View>}
                 useBottomSafeAreaPadding={true}

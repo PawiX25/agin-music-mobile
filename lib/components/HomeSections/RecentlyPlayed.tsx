@@ -85,10 +85,10 @@ export function RecentlyPlayed() {
                             colors={['transparent', 'rgba(0,0,0,0.8)']}
                             style={{
                                 position: 'absolute',
-                                bottom: 0,
+                                bottom: -1,
                                 left: 0,
                                 right: 0,
-                                height: '50%',
+                                height: '51%',
                                 justifyContent: 'flex-end',
                                 padding: 20,
                             }}
