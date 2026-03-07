@@ -1,7 +1,7 @@
 import { useColors } from '@lib/hooks';
 import { Icon } from '@tabler/icons-react-native';
 import React, { useMemo } from 'react';
-import { KeyboardAvoidingView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import Title from './Title';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -78,7 +78,7 @@ export function SetupPage({ ...props }: SetupPageProps) {
 
     return (
         <SafeAreaView style={styles.main}>
-            <KeyboardAvoidingView style={styles.container} behavior='height'>
+            <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                 <SetupPageContent {...props} />
             </KeyboardAvoidingView>
         </SafeAreaView>
