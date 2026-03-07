@@ -35,8 +35,8 @@ export default function SkipSwipe({ width, renderItem, style }: SkipSwipeProps) 
                 if (index == queue.activeIndex) return;
                 queue.jumpTo(index);
             }}
-            panGestureHandlerProps={{
-                activeOffsetX: [-20, 20],
+            onConfigurePanGesture={(gesture) => {
+                gesture.activeOffsetX([-20, 20]);
             }}
             style={style}
         />

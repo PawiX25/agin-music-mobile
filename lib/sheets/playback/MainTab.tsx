@@ -89,7 +89,7 @@ export default function MainTab() {
         }
     }), [insets.bottom, height]);
 
-    const buffering = state === 'buffering';
+    const buffering = (state as string) === 'buffering';
 
     return (
         <View style={styles.container}>

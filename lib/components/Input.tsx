@@ -1,7 +1,7 @@
 import { useColors } from '@lib/hooks';
 import { Icon } from '@tabler/icons-react-native';
 import { forwardRef, useMemo, useState } from 'react';
-import { NativeSyntheticEvent, Platform, StyleSheet, Text, TextInput, TextInputFocusEventData, TextInputProps, TextStyle, TouchableWithoutFeedback, View, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, TextInputProps, TextStyle, TouchableWithoutFeedback, View, ViewStyle } from 'react-native';
 
 export interface InputProps extends Omit<TextInputProps, 'style'> {
     icon?: Icon,
@@ -51,12 +51,12 @@ export const Input = forwardRef<TextInput, InputProps>((props, ref) => {
         }
     }), [inputStyle, colors, isFocused, compact]);
 
-    const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+    const handleFocus = (e: any) => {
         setIsFocused(true);
         onFocus?.(e);
     };
 
-    const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+    const handleBlur = (e: any) => {
         setIsFocused(false);
         onBlur?.(e);
     };

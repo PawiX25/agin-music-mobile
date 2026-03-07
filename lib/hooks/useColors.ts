@@ -11,16 +11,16 @@ export type UseColorsOptions = {
 export function useColors(options?: UseColorsOptions) {
     const override = useContext(ColorSchemeOverride);
 
-    const [currentTheme, setTheme] = useState<ColorSchemeName>(
-        override ?? Appearance.getColorScheme(),
+    const [currentTheme, setTheme] = useState<'light' | 'dark'>(
+        (override ?? Appearance.getColorScheme() ?? 'light') === 'dark' ? 'dark' : 'light',
     );
 
     useEffect(() => {
-        if (override) return setTheme(override);
+        if (override) return setTheme(override === 'dark' ? 'dark' : 'light');
         const listener = AppState.addEventListener('change', nextAppState => {
             if (nextAppState === 'active') {
                 const theme = Appearance.getColorScheme();
-                setTheme(theme);
+                setTheme(theme === 'dark' ? 'dark' : 'light');
             }
         });
 
@@ -29,6 +29,5 @@ export function useColors(options?: UseColorsOptions) {
         }
     }, [override]);
 
-    const theme = currentTheme ?? 'light';
-    return Colors[options?.forceTheme ?? theme];
+    return Colors[options?.forceTheme ?? currentTheme];
 }
