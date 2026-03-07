@@ -2,16 +2,15 @@ import { Colors } from '@lib/constants/Colors';
 import config from '@lib/constants/config';
 import { Pin } from '@lib/providers/PinsProvider';
 import React from 'react';
-import { ColorSchemeName } from 'react-native';
 import { ColorProp, FlexWidget, ImageWidget, ImageWidgetSource, TextWidget } from 'react-native-android-widget';
 
 export type PinnedProps = {
     pins: Pin[];
-    colorScheme: ColorSchemeName;
+    colorScheme: 'light' | 'dark' | string | null | undefined;
 };
 
 export function Pinned({ pins, colorScheme }: PinnedProps) {
-    const colors = Colors[colorScheme ?? 'light'];
+    const colors = Colors[(colorScheme === 'dark' ? 'dark' : 'light')];
 
     return (
         <FlexWidget

@@ -155,7 +155,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             duration: data.duration ?? 0,
             url: generateMediaUrl({ id: data.id }),
             artwork: cover.generateUrl(data.coverArt || data.id),
-            extraPayload: { _child: data },
+            extraPayload: { _child: data } as any,
             _child: data,
         };
     }, [generateMediaUrl, cover.generateUrl]);

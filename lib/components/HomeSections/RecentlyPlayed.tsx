@@ -77,7 +77,6 @@ export function RecentlyPlayed() {
                         <Cover
                             source={{ uri: item.coverUri }}
                             cacheKey={item.coverCacheKey}
-                            size="100%"
                             radius={16}
                             withShadow={false}
                         />

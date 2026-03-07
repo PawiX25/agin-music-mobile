@@ -2,7 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { Child, StructuredLyrics } from '@lib/types';
 import { useApi } from './useApi';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // TODO: Finish caching
 export function useCache() {

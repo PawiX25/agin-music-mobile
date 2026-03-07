@@ -68,7 +68,7 @@ export default function SycnedLyricsView({ lyrics }: LyricsViewProps) {
             data={lyrics?.line}
             renderItem={({ item, index }) => <LyricsLine line={item} active={activeLine == index} onPress={async () => {
                 await TrackPlayer.play();
-                await TrackPlayer.seek(item.start / 1000);
+                await TrackPlayer.seek((item.start ?? 0) / 1000);
                 listRef.current?.scrollToIndex({ index: index - 1 > 0 ? index - 1 : 0, animated: true });
                 isLocked.current = true;
                 setActiveLine(index);

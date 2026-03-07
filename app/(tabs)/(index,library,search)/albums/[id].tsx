@@ -9,7 +9,7 @@ import { IconDots, IconSearch } from '@tabler/icons-react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { View } from 'react-native';
-import { LegendList } from '@legendapp/list';
+import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import { SheetManager } from 'react-native-actions-sheet';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, useAnimatedRef, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -104,10 +104,10 @@ export default function Album() {
                 <LibLayout.Provider value="list">
                     <LibSize.Provider value="medium">
                         <LibSeparators.Provider value={false}>
-                            <LegendList
+                            <AnimatedLegendList
                                 data={tracksData ?? []}
                                 keyExtractor={(item) => item.id ?? `fallback-${Math.random()}`}
-                                ref={listRef}
+                                refScrollView={listRef}
                                 renderItem={renderItem}
                                 ListHeaderComponent={<PlaylistHeader album={data} onTitlePress={showContextMenu} />}
                                 ListFooterComponent={<View style={{ height: tabsHeight + 10 }} />}

@@ -9,7 +9,7 @@ import { SheetManager } from 'react-native-actions-sheet';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { LegendList } from '@legendapp/list';
+import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import * as Haptics from 'expo-haptics';
 import Animated, { Easing, useAnimatedRef, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ArtistWithAlbumsID3, AlbumID3 } from '@lib/types';
@@ -192,10 +192,10 @@ export default function Artist() {
                 <LibLayout.Provider value="list">
                     <LibSize.Provider value="medium">
                         <LibSeparators.Provider value={false}>
-                            <LegendList
+                            <AnimatedLegendList
                                 data={data?.album ?? []}
                                 keyExtractor={(item) => item.id}
-                                ref={listRef}
+                                refScrollView={listRef}
                                 renderItem={renderItem}
                                 ListHeaderComponent={ListHeader}
                                 ListFooterComponent={<View style={{ height: tabsHeight + 10 }} />}
