@@ -162,7 +162,6 @@ export default function Miniplayer() {
                         setCarouselWidth(width);
                     }}>
                         {carouselWidth != 0 && <SkipSwipe width={carouselWidth} renderItem={RenderItem} />}
-                        <Overlay position="left" />
                         <Overlay position="right" />
                     </View>
                     {!isEmpty && (
