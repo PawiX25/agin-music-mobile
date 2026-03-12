@@ -184,3 +184,122 @@ index 5c7f61f..ccd9dc6 100644
      }
    }, [refresh])
  
+
+diff --git a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt
+--- a/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt
++++ b/node_modules/react-native-nitro-player/android/src/main/java/com/margelo/nitro/nitroplayer/media/MediaSessionManager.kt
+@@ -50,6 +50,8 @@
+     private var notificationManager: NotificationManager? = null
+     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+     private val artworkCache = mutableMapOf<String, Bitmap>()
++    private var lastNotificationBitmap: Bitmap? = null
++    @Volatile private var isChangingTrack: Boolean = false
+ 
+     private var androidAutoEnabled: Boolean = false
+     private var carPlayEnabled: Boolean = false
+@@ -289,7 +291,16 @@
+             val bitmap =
+                 withContext(Dispatchers.IO) {
+                     val url = URL(artworkUrl)
+-                    BitmapFactory.decodeStream(url.openConnection().getInputStream())
++                    val raw = BitmapFactory.decodeStream(url.openConnection().getInputStream())
++                    // Scale to max 1024x1024 for high-DPI notification artwork
++                    if (raw != null && (raw.width > 1024 || raw.height > 1024)) {
++                        val scale = 1024f / maxOf(raw.width, raw.height)
++                        val scaled = Bitmap.createScaledBitmap(raw, (raw.width * scale).toInt(), (raw.height * scale).toInt(), true)
++                        if (scaled !== raw) raw.recycle()
++                        scaled
++                    } else {
++                        raw
++                    }
+                 }
+             // Cache the bitmap
+             if (bitmap != null) {
+@@ -352,6 +363,10 @@
+         if (!showInNotification) return
+ 
+         val currentTrack = getCurrentTrack()
++        if (currentTrack == null) {
++            hideNotification()
++            return
++        }
+         val notification = buildNotification(currentTrack)
+         notificationManager?.notify(NOTIFICATION_ID, notification)
+     }
+@@ -422,13 +437,22 @@
+             createMediaAction(ACTION_NEXT),
+         )
+ 
+-        // Load artwork asynchronously and update notification
++        // Load artwork - use cache synchronously if available, fallback to last known artwork
+         track?.artwork?.asSecondOrNull()?.let { artworkUrl ->
+-            scope.launch {
+-                val bitmap = loadArtworkBitmap(artworkUrl)
+-                if (bitmap != null) {
+-                    builder.setLargeIcon(bitmap)
+-                    notificationManager?.notify(NOTIFICATION_ID, builder.build())
++            val cachedBitmap = artworkCache[artworkUrl]
++            if (cachedBitmap != null) {
++                lastNotificationBitmap = cachedBitmap
++                builder.setLargeIcon(cachedBitmap)
++            } else {
++                // Use last known artwork as placeholder to prevent blank/gray flash
++                lastNotificationBitmap?.let { builder.setLargeIcon(it) }
++                scope.launch {
++                    val bitmap = loadArtworkBitmap(artworkUrl)
++                    if (bitmap != null) {
++                        lastNotificationBitmap = bitmap
++                        builder.setLargeIcon(bitmap)
++                        notificationManager?.notify(NOTIFICATION_ID, builder.build())
++                    }
+                 }
+             }
+         }
+@@ -461,13 +485,36 @@
+     }
+ 
+     fun onTrackChanged() {
+-        // Preload artwork for better notification display
++        // Preload artwork before updating notification to prevent pixelated flash
+         val currentTrack = getCurrentTrack()
+         if (currentTrack != null) {
++            isChangingTrack = true
+             scope.launch {
+                 currentTrack.artwork?.asSecondOrNull()?.let { artworkUrl ->
+-                    loadArtworkBitmap(artworkUrl)
++                    val bitmap = loadArtworkBitmap(artworkUrl)
++                    if (bitmap != null) {
++                        lastNotificationBitmap = bitmap
++                        // Update MediaSession metadata with artwork data so the system
++                        // doesn't independently load a low-res version from the URI
++                        try {
++                            val currentItem = player.currentMediaItem
++                            if (currentItem != null) {
++                                val existingMetadata = currentItem.mediaMetadata
++                                val updatedMetadata = existingMetadata.buildUpon()
++                                    .setArtworkData(bitmapToByteArray(bitmap), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
++                                    .build()
++                                val updatedItem = currentItem.buildUpon()
++                                    .setMediaMetadata(updatedMetadata)
++                                    .build()
++                                val index = player.currentMediaItemIndex
++                                player.replaceMediaItem(index, updatedItem)
++                            }
++                        } catch (e: Exception) {
++                            NitroPlayerLogger.log("MediaSessionManager", "Failed to update metadata artwork: ${e.message}")
++                        }
++                    }
+                 }
++                isChangingTrack = false
+                 updateNotification()
+             }
+         } else {
+@@ -476,6 +523,8 @@
+     }
+ 
+     fun onPlaybackStateChanged() {
++        // Skip notification update during track change to prevent pixelated artwork flash
++        if (isChangingTrack) return
+         updateNotification()
+     }
+ 
