@@ -83,12 +83,12 @@ function PlaybackSheet({ sheetId, payload }: SheetProps<'playback'>) {
             icon: IconMessage,
             value: 'lyrics',
         },
-        {
+        ...(Platform.OS === 'ios' ? [{
             icon: IconCast,
             value: 'cast',
             onPress: () => showRoutePicker({ prioritizesVideoDevices: false }),
             disabled: !isExternalPlaybackAvailable,
-        },
+        }] as Tab[] : []),
         {
             icon: IconList,
             value: 'queue',

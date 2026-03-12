@@ -8,9 +8,9 @@ import { useColors } from '@/lib/hooks/useColors';
 import { useCoverBuilder } from '@/lib/hooks/useCoverBuilder';
 import { secondsToTimecode } from '@/lib/util';
 import { IconPlayerPauseFilled, IconPlayerPlayFilled, IconPlayerSkipBackFilled, IconPlayerSkipForwardFilled } from '@tabler/icons-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import Animated, { useSharedValue, SlideInRight, SlideOutLeft, SlideInLeft, SlideOutRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TrackPlayer, useOnPlaybackStateChange, useOnPlaybackProgressChange } from 'react-native-nitro-player';
 import { router } from 'expo-router';
@@ -20,7 +20,7 @@ export default function MainTab() {
     const insets = useSafeAreaInsets();
     const colors = useColors();
     const queue = useQueue();
-    const { nowPlaying } = queue;
+    const { nowPlaying, activeIndex } = queue;
     const cover = useCoverBuilder();
 
     const [seeking, setSeeking] = useState(false);
@@ -36,6 +36,21 @@ export default function MainTab() {
     const [duration, setDuration] = useState(0);
     const { position: progressPosition, totalDuration: progressDuration } = useOnPlaybackProgressChange();
     const { state } = useOnPlaybackStateChange();
+
+    // Track skip direction for slide animation
+    const prevIndexRef = useRef(activeIndex);
+    const directionRef = useRef<'forward' | 'backward'>('forward');
+    if (activeIndex !== prevIndexRef.current) {
+        directionRef.current = activeIndex > prevIndexRef.current ? 'forward' : 'backward';
+        prevIndexRef.current = activeIndex;
+    }
+
+    const entering = directionRef.current === 'forward'
+        ? SlideInRight.duration(200)
+        : SlideInLeft.duration(200);
+    const exiting = directionRef.current === 'forward'
+        ? SlideOutLeft.duration(200)
+        : SlideOutRight.duration(200);
 
     useEffect(() => {
         if (seeking) return;
@@ -93,9 +108,9 @@ export default function MainTab() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.cover}>
+            <Animated.View style={styles.cover} key={`cover-${nowPlaying.id}`} entering={entering} exiting={exiting}>
                 <Cover source={{ uri: cover.generateUrl(nowPlaying.coverArt ?? '') }} cacheKey={nowPlaying.coverArt ? `${nowPlaying.coverArt}-full` : 'empty-full'} />
-            </View>
+            </Animated.View>
             <View>
                 <View style={styles.metadata}>
                     <View style={styles.metadataContainer}>
