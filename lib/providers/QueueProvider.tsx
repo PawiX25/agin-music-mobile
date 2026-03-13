@@ -177,7 +177,22 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
             const currentQueue = await TrackPlayer.getActualQueue();
             if (!currentQueue || currentQueue.length === 0) return;
 
-            const currentIndex = state?.currentIndex ?? 0;
+            const stateTrackId = state?.currentTrack?.id;
+            let currentIndex = -1;
+
+            if (stateTrackId) {
+                currentIndex = currentQueue.findIndex(track => track.id === stateTrackId);
+            }
+
+            if (currentIndex < 0) {
+                const fallbackIndex = state?.currentIndex ?? -1;
+                if (fallbackIndex >= 0 && fallbackIndex < currentQueue.length) {
+                    currentIndex = fallbackIndex;
+                }
+            }
+
+            if (currentIndex < 0) return;
+
             const track = currentQueue[currentIndex];
             if (!track) return;
 
@@ -222,6 +237,17 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
     const updateActive = useCallback(async () => {
         try {
             const state = await TrackPlayer.getState();
+            const currentQueue = await TrackPlayer.getActualQueue();
+
+            const stateTrackId = state?.currentTrack?.id;
+            if (stateTrackId && currentQueue && currentQueue.length > 0) {
+                const resolvedIndex = currentQueue.findIndex(track => track.id === stateTrackId);
+                if (resolvedIndex >= 0) {
+                    setActiveIndex(resolvedIndex);
+                    return;
+                }
+            }
+
             const currentIndex = state?.currentIndex ?? 0;
             setActiveIndex(currentIndex);
         } catch (e) {
@@ -301,17 +327,16 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         try {
             const currentQueue = await TrackPlayer.getActualQueue();
             const state = await TrackPlayer.getState();
-            const currentlyPlaying = state?.currentIndex ?? null;
+            const currentTrackId = state?.currentTrack?.id;
 
-            if (currentlyPlaying === null || !currentQueue || currentQueue.length === 0) {
+            if (!currentTrackId || !currentQueue || currentQueue.length === 0) {
                 loadTracks(tracks);
                 await updateQueue();
                 await updateActive();
                 return;
             }
 
-            const currentlyPlayingMetadata = currentQueue[currentlyPlaying];
-            const newCurrentIndex = tracks.findIndex(track => track.id === currentlyPlayingMetadata?.id);
+            const newCurrentIndex = tracks.findIndex(track => track.id === currentTrackId);
 
             loadTracks(tracks);
             if (newCurrentIndex >= 0) {
