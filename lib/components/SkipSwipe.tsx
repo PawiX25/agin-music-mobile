@@ -26,9 +26,8 @@ export default function SkipSwipe({ width, renderItem, style }: SkipSwipeProps) 
             data={queue.queue ?? []}
             windowSize={5}
             width={width}
-            renderItem={({ index }) => {
-                const item = queue.queue?.[index];
-                if (!item) return <View />;
+            renderItem={({ item }) => {
+                if (!item?._child) return <View />;
                 return renderItem(item._child);
             }}
             onSnapToItem={(index) => {

@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Title from './Title';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useColors } from '@/lib/hooks/useColors';
 import ActionIcon from './ActionIcon';
 import { IconPlayerPauseFilled, IconPlayerPlayFilled, IconPlayerTrackNextFilled } from '@tabler/icons-react-native';
@@ -16,11 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { TrackPlayer, useOnPlaybackStateChange } from 'react-native-nitro-player';
 
-function RenderItem(item: Child) {
+function RenderItem({ item }: { item: Child }) {
     const colors = useColors();
     const cover = useCoverBuilder();
-    const { nowPlaying } = useQueue();
-    const isEmpty = nowPlaying.id === '';
 
     const styles = useMemo(() => StyleSheet.create({
         metadata: {
@@ -53,9 +51,9 @@ function RenderItem(item: Child) {
             /> : <View style={styles.image} />}
             <View style={styles.textContainer}>
                 <Title size={14} fontFamily="Poppins-SemiBold" numberOfLines={1}>
-                    {isEmpty ? 'Not Playing' : item.title}
+                    {item.title || 'Not Playing'}
                 </Title>
-                {!isEmpty && (
+                {!!item.artist && (
                     <Title
                         size={12}
                         fontFamily="Poppins-Regular"
@@ -102,14 +100,6 @@ export default function Miniplayer() {
 
     const [carouselWidth, setCarouselWidth] = useState(0);
 
-    const containerRef = useRef<View>(null);
-
-    // useLayoutEffect(() => {
-    //     containerRef.current?.measureInWindow((x, y, width) => {
-    //         setCarouselWidth(width);
-    //     });
-    // }, [containerRef.current]);
-
     const styles = useMemo(() => StyleSheet.create({
         miniplayer: {
             backgroundColor: colors.secondaryBackground,
@@ -152,17 +142,25 @@ export default function Miniplayer() {
     }), [colors.secondaryBackground]);
 
     const isEmpty = nowPlaying.id === '';
+    const queueLength = queue.queue?.length ?? 0;
+    const canRenderCarousel = queueLength > 1 && carouselWidth > 0;
+    const fallbackItem = queue.queue?.[queue.activeIndex]?._child ?? nowPlaying;
 
     return (
         <>
             {!isEmpty && <Animated.View entering={FadeInDown.duration(300).easing(Easing.inOut(Easing.ease))} exiting={FadeOutDown.duration(300).easing(Easing.inOut(Easing.ease))}>
                 <Pressable onPress={() => SheetManager.show('playback')} style={styles.miniplayer}>
                     <View style={styles.swipeContainer} onLayout={(event) => {
-                        const { x, y, width, height } = event.nativeEvent.layout;
+                        const { width } = event.nativeEvent.layout;
                         setCarouselWidth(width);
                     }}>
-                        {carouselWidth != 0 && <SkipSwipe width={carouselWidth} renderItem={RenderItem} />}
-                        <Overlay position="right" />
+                        {canRenderCarousel
+                            ? <>
+                                <SkipSwipe width={carouselWidth} renderItem={(item) => <RenderItem item={item} />} />
+                                <Overlay position="right" />
+                            </>
+                            : <RenderItem item={fallbackItem} />
+                        }
                     </View>
                     {!isEmpty && (
                         <View style={styles.actions}>

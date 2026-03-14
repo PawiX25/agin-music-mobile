@@ -171,6 +171,16 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         tracks.forEach(t => trackChildMapRef.current.set(t.id, t._child));
     }, []);
 
+    const playFromIndexSafe = useCallback(async (index: number) => {
+        let skipped = await TrackPlayer.skipToIndex(index).catch(() => false);
+        if (!skipped) {
+            await new Promise(resolve => setTimeout(resolve, 120));
+            skipped = await TrackPlayer.skipToIndex(index).catch(() => false);
+        }
+        TrackPlayer.play();
+        return skipped;
+    }, []);
+
     const updateNowPlaying = useCallback(async () => {
         try {
             const state = await TrackPlayer.getState();
@@ -385,7 +395,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
 
         if (!currentQueue || currentQueue.length === 0) {
             loadTracks([trackItem]);
-            TrackPlayer.play();
+            await playFromIndexSafe(0);
             setNowPlaying(data);
         } else {
             PlayerQueue.addTrackToPlaylist(playlistIdRef.current, trackItem);
@@ -394,7 +404,7 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         await updateQueue();
         await updateActive();
         return true;
-    }, [cache, convertToTrackItem, loadTracks]);
+    }, [cache, convertToTrackItem, loadTracks, playFromIndexSafe]);
 
     const playNext = useCallback(async (id: string) => {
         const data = await cache.fetchChild(id);
@@ -424,13 +434,13 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
 
         const trackItem = convertToTrackItem(data);
         loadTracks([trackItem]);
-        TrackPlayer.play();
+        await playFromIndexSafe(0);
 
         setNowPlaying(data);
         await updateQueue();
         await updateActive();
         return true;
-    }, [cache, convertToTrackItem, loadTracks]);
+    }, [cache, convertToTrackItem, loadTracks, playFromIndexSafe]);
 
     const replace = useCallback(async (items: Child[], options?: QueueReplaceOptions) => {
         let itemsCopy = [...items];
@@ -441,15 +451,12 @@ export default function QueueProvider({ children }: { children?: React.ReactNode
         loadTracks(tracks);
 
         const initialIndex = options?.initialIndex ?? 0;
-        if (initialIndex > 0) {
-            await TrackPlayer.skipToIndex(initialIndex);
-        }
-        TrackPlayer.play();
+        await playFromIndexSafe(initialIndex);
 
         setNowPlaying(itemsCopy[initialIndex]);
         await updateQueue();
         await updateActive();
-    }, [convertToTrackItem, loadTracks]);
+    }, [convertToTrackItem, loadTracks, playFromIndexSafe]);
 
     const clear = useCallback(async () => {
         TrackPlayer.pause();
