@@ -40,6 +40,9 @@ export const Input = forwardRef<TextInput, InputProps>((props, ref) => {
             color: colors.text[0],
             flex: 1,
             height: '100%',
+            padding: 0,
+            includeFontPadding: false,
+            textAlignVertical: 'center',
             ...inputStyle,
         },
         label: {
