@@ -4,6 +4,8 @@ import React, { useMemo } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import Title from './Title';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import Animated, { interpolate, useAnimatedReaction, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 export type SetupPageProps = {
     icon: Icon,
@@ -11,10 +13,36 @@ export type SetupPageProps = {
     description?: string,
     children?: React.ReactNode,
     actions?: React.ReactNode,
+    keyboardOffsetShift?: number,
 }
 
-export function SetupPageContent({ icon: Icon, title, description, children, actions }: SetupPageProps) {
+const SPRING_CONFIG = {
+    damping: 20,
+    stiffness: 200,
+    mass: 0.5,
+};
+
+export function SetupPageContent({ icon: Icon, title, description, children, actions, keyboardOffsetShift = 15 }: SetupPageProps) {
     const colors = useColors();
+    const { height } = useReanimatedKeyboardAnimation();
+    const keyboardOffset = useSharedValue(0);
+
+    useAnimatedReaction(
+        () => height.value,
+        (next, prev) => {
+            if (next === prev) return;
+
+            keyboardOffset.value = withSpring(next, SPRING_CONFIG);
+        },
+        [],
+    );
+
+    const animatedActionsStyle = useAnimatedStyle(() => {
+        const offsetDown = interpolate(keyboardOffset.value, [-100, 0], [keyboardOffsetShift, 0], 'clamp');
+        return {
+            transform: [{ translateY: keyboardOffset.value + offsetDown }],
+        };
+    });
 
     const styles = useMemo(() => StyleSheet.create({
         header: {
@@ -53,9 +81,16 @@ export function SetupPageContent({ icon: Icon, title, description, children, act
             <View style={styles.content}>
                 {children}
             </View>
-            {actions && <View style={styles.bottomActions}>
-                {actions}
-            </View>}
+            {actions && Platform.OS === 'android' && (
+                <Animated.View style={[styles.bottomActions, animatedActionsStyle]}>
+                    {actions}
+                </Animated.View>
+            )}
+            {actions && Platform.OS !== 'android' && (
+                <View style={styles.bottomActions}>
+                    {actions}
+                </View>
+            )}
         </>
     )
 }

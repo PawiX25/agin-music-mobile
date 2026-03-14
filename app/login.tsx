@@ -5,7 +5,7 @@ import { useServer } from '@lib/hooks';
 import { IconMusic } from '@tabler/icons-react-native';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { Keyboard, View } from 'react-native';
 import { SheetManager } from 'react-native-actions-sheet';
 
 export default function Login() {
@@ -15,6 +15,7 @@ export default function Login() {
     const server = useServer();
 
     const demoConfirm = useCallback(async () => {
+        Keyboard.dismiss();
         const confirmed = await SheetManager.show('confirm', {
             payload: {
                 title: 'Use Navidrome demo server',
@@ -27,6 +28,7 @@ export default function Login() {
     }, []);
 
     const goNext = useCallback(async (useDemo?: boolean) => {
+        Keyboard.dismiss();
         if (url === '' && !useDemo) return;
         const confirmed = useDemo ? await demoConfirm() : true;
         if (!confirmed) return;
@@ -73,6 +75,7 @@ export default function Login() {
             icon={IconMusic}
             title='Welcome to Agin Music'
             description='Agin Music is an open source OpenSubsonic client. Enter your server URL to get started.'
+            keyboardOffsetShift={30}
             actions={<View style={{ gap: 10 }}>
                 <Button onPress={() => goNext(false)} disabled={url === '' || loading}>Next</Button>
                 <Button onPress={() => goNext(true)} variant='subtle'>Use Navidrome demo server</Button>
