@@ -316,8 +316,8 @@ export default function EditPlaylist() {
                     <>
                         <View style={styles.nameSection}>
                             <Cover
-                                source={{ uri: cover.generateUrl(data?.coverArt ?? '') }}
-                                cacheKey={data?.coverArt ? `${data.coverArt}-full` : 'empty-full'}
+                                source={{ uri: cover.generateUrl(data?.coverArt ?? '', { size: 512 }) }}
+                                cacheKey={data?.coverArt ? `${data.coverArt}-512x512` : 'empty-512x512'}
                                 size={80}
                                 radius={10}
                                 withShadow={false}

@@ -13,8 +13,8 @@ export function Pinned() {
         id: pin.id,
         title: pin.name.replace(/\(.*/g, '').trim(),
         coverArt: pin.coverArt,
-        coverUri: cover.generateUrl(pin.coverArt, { size: 300 }),
-        coverCacheKey: `${pin.coverArt}-300x300`,
+        coverUri: cover.generateUrl(pin.coverArt, { size: 512 }),
+        coverCacheKey: `${pin.coverArt}-512x512`,
         type: pin.type,
     })), [pins]);
 

@@ -167,6 +167,8 @@ export default function BlurredBackground({ source, cacheKey }: BlurredBackgroun
                     source={source0}
                     blurRadius={500}
                     cachePolicy="disk"
+                    transition={0}
+                    recyclingKey={(source0 as any)?.cacheKey}
                     onLoad={onLayer0Load}
                 />
                 <Animated.View style={topStyle}>
@@ -175,6 +177,8 @@ export default function BlurredBackground({ source, cacheKey }: BlurredBackgroun
                         source={source1}
                         blurRadius={500}
                         cachePolicy="disk"
+                        transition={0}
+                        recyclingKey={(source1 as any)?.cacheKey}
                         onLoad={onLayer1Load}
                     />
                 </Animated.View>

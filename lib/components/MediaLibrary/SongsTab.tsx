@@ -15,8 +15,8 @@ export function SongsTab() {
         id: s.id,
         title: s.title,
         subtitle: s.artist ?? 'Unknown Artist',
-        coverUri: cover.generateUrl(s.coverArt ?? '', { size: layout == 'grid' ? 300 : 128 }),
-        coverCacheKey: `${s.coverArt}-${layout == 'grid' ? '300x300' : '128x128'}`,
+        coverUri: cover.generateUrl(s.coverArt ?? '', { size: layout == 'grid' ? 512 : 128 }),
+        coverCacheKey: `${s.coverArt}-${layout == 'grid' ? '512x512' : '128x128'}`,
         type: 'track',
     })), [cache.cache.allSongs, cover]);
 

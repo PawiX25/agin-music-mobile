@@ -48,7 +48,7 @@ export default React.memo(function Cover({ source, size, radius, withShadow = tr
         <View style={withShadow && styles.container}>
             {Icon ? <View style={[styles.image, styles.icon]}>
                 <Icon size={20} color={colors.forcedTint} />
-            </View> : <Image source={imageSource} style={styles.image} cachePolicy="disk" />}
+            </View> : <Image source={imageSource} style={styles.image} cachePolicy="disk" transition={0} recyclingKey={cacheKey} />}
         </View>
     )
 });

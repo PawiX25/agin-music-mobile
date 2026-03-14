@@ -41,7 +41,7 @@ export function PlaylistBackground({ source, cacheKey, animated }: PlaylistBackg
 
     return (
         <View style={styles.background}>
-            <Image style={styles.image} source={{ ...source, cacheKey }} blurRadius={150} cachePolicy="disk" transition={animated ? { duration: 1000, effect: 'cross-dissolve', timing: 'ease-in-out' } : undefined} />
+            <Image style={styles.image} source={{ ...source, cacheKey }} blurRadius={150} cachePolicy="disk" recyclingKey={cacheKey} transition={animated ? { duration: 1000, effect: 'cross-dissolve', timing: 'ease-in-out' } : 0} />
             <LinearGradient style={styles.gradient} colors={[colors.background + '50', colors.background]} />
         </View>
     )

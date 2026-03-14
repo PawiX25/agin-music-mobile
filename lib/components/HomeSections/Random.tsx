@@ -31,7 +31,7 @@ export function Random() {
                 subtitle: song.artist,
                 coverArt: song.coverArt,
                 coverUri: cover.generateUrl(song.coverArt ?? '', { size: 512 }),
-                coverCacheKey: `${song.coverArt}-300x300`,
+                coverCacheKey: `${song.coverArt}-512x512`,
                 type: 'track',
             }));
 

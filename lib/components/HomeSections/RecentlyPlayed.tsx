@@ -38,8 +38,8 @@ export function RecentlyPlayed() {
                     title: album.name || album.title,
                     subtitle: album.artist,
                     coverArt: album.coverArt,
-                    coverUri: cover.generateUrl(album.coverArt ?? '', { size: 512 }),
-                    coverCacheKey: `${album.coverArt}-512x512`,
+                    coverUri: cover.generateUrl(album.coverArt ?? ''),
+                    coverCacheKey: `${album.coverArt}-full`,
                     type: 'album',
                 }));
 

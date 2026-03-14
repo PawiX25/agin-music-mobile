@@ -109,7 +109,7 @@ export default function MainTab() {
     return (
         <View style={styles.container}>
             <Animated.View style={styles.cover} key={`cover-${nowPlaying.id}`} entering={entering} exiting={exiting}>
-                <Cover source={{ uri: cover.generateUrl(nowPlaying.coverArt ?? '') }} cacheKey={nowPlaying.coverArt ? `${nowPlaying.coverArt}-full` : 'empty-full'} />
+                <Cover source={{ uri: cover.generateUrl(nowPlaying.coverArt ?? '', { size: 512 }) }} cacheKey={nowPlaying.coverArt ? `${nowPlaying.coverArt}-512x512` : 'empty-512x512'} />
             </Animated.View>
             <View>
                 <View style={styles.metadata}>

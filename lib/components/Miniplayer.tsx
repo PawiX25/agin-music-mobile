@@ -48,6 +48,8 @@ function RenderItem({ item }: { item: Child }) {
                 source={{ uri: cover.generateUrl(item.coverArt || item.id, { size: 128 }), cacheKey: `${item.coverArt || item.id}-128x128` }}
                 style={styles.image}
                 cachePolicy="disk"
+                transition={0}
+                recyclingKey={`${item.coverArt || item.id}-128x128`}
             /> : <View style={styles.image} />}
             <View style={styles.textContainer}>
                 <Title size={14} fontFamily="Poppins-SemiBold" numberOfLines={1}>

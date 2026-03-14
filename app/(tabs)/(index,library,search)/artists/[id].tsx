@@ -148,12 +148,12 @@ export default function Artist() {
         return (
             <View style={styles.header}>
                 <PlaylistBackground
-                    source={{ uri: cover.generateUrl(data.coverArt ?? '') }}
-                    cacheKey={`${data.coverArt}-full`}
+                    source={{ uri: cover.generateUrl(data.coverArt ?? '', { size: 512 }) }}
+                    cacheKey={`${data.coverArt}-512x512`}
                 />
                 <Cover
-                    source={{ uri: cover.generateUrl(data.coverArt ?? '') }}
-                    cacheKey={`${data.coverArt}-full`}
+                    source={{ uri: cover.generateUrl(data.coverArt ?? '', { size: 512 }) }}
+                    cacheKey={`${data.coverArt}-512x512`}
                     size={200}
                     radius={100}
                 />

@@ -119,7 +119,7 @@ function PlaybackSheet({ sheetId, payload }: SheetProps<'playback'>) {
                 <GestureEnabledContext.Provider value={[gestureEnabled, setGestureEnabled]}>
                     <IdContext.Provider value={sheetId}>
                         <TabContext.Provider value={{ tab: currentTab, changeTab: handleTabChange }}>
-                            <BlurredBackground source={{ uri: cover.generateUrl(nowPlaying.coverArt ?? '') }} cacheKey={nowPlaying.coverArt ? `${nowPlaying.coverArt}-full` : 'empty-full'} animated={isAnimated} />
+                            <BlurredBackground source={{ uri: cover.generateUrl(nowPlaying.coverArt ?? '', { size: 512 }) }} cacheKey={nowPlaying.coverArt ? `${nowPlaying.coverArt}-512x512` : 'empty-512x512'} animated={isAnimated} />
                             <View style={styles.container}>
                                 <View style={styles.tabContainer}>
                                     {currentTab == 'main' && <Animated.View style={styles.tab} exiting={exitUp} entering={enterDown}>

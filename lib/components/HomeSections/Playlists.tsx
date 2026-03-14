@@ -14,8 +14,8 @@ export function Playlists() {
         id: playlist.id,
         title: playlist.name,
         coverArt: playlist.coverArt,
-        coverUri: cover.generateUrl(playlist.coverArt ?? '', { size: 300 }),
-        coverCacheKey: `${playlist.coverArt}-300x300`,
+        coverUri: cover.generateUrl(playlist.coverArt ?? '', { size: 512 }),
+        coverCacheKey: `${playlist.coverArt}-512x512`,
         type: 'playlist',
     })), [memoryCache.cache.allPlaylists, cover.generateUrl]);
 

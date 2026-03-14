@@ -17,8 +17,8 @@ export function PlaylistsTab() {
         id: p.id,
         title: p.name,
         subtitle: `${p.songCount} songs${layout !== 'grid' ? ` • edited ${formatDistanceToNow(new Date(p.changed), { addSuffix: true })}` : ''}`,
-        coverUri: cover.generateUrl(p.coverArt ?? '', { size: layout == 'grid' ? 300 : 128 }),
-        coverCacheKey: `${p.coverArt}-${layout == 'grid' ? '300x300' : '128x128'}`,
+        coverUri: cover.generateUrl(p.coverArt ?? '', { size: layout == 'grid' ? 512 : 128 }),
+        coverCacheKey: `${p.coverArt}-${layout == 'grid' ? '512x512' : '128x128'}`,
         type: 'playlist',
     })), [cache.cache.allPlaylists, cover, layout]);
 

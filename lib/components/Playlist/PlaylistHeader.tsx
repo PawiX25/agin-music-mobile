@@ -62,12 +62,12 @@ export function PlaylistHeader({ playlist, album, onTitlePress }: PlaylistHeader
     return (
         <View style={styles.container}>
             <PlaylistBackground
-                source={{ uri: cover.generateUrl(art) }}
-                cacheKey={`${art}-full`}
+                source={{ uri: cover.generateUrl(art, { size: 512 }) }}
+                cacheKey={`${art}-512x512`}
             />
             <Cover
-                source={{ uri: cover.generateUrl(art) }}
-                cacheKey={`${art}-full`}
+                source={{ uri: cover.generateUrl(art, { size: 512 }) }}
+                cacheKey={`${art}-512x512`}
                 size={250}
             />
             <View style={styles.title}>

@@ -16,8 +16,8 @@ export function ArtistsTab() {
         id: a.id,
         title: a.name,
         subtitle: `${a.albumCount} ${a.albumCount === 1 ? 'album' : 'albums'}`,
-        coverUri: cover.generateUrl(a.coverArt ?? '', { size: layout == 'grid' ? 300 : 128 }),
-        coverCacheKey: `${a.coverArt}-${layout == 'grid' ? '300x300' : '128x128'}`,
+        coverUri: cover.generateUrl(a.coverArt ?? '', { size: layout == 'grid' ? 512 : 128 }),
+        coverCacheKey: `${a.coverArt}-${layout == 'grid' ? '512x512' : '128x128'}`,
         type: 'artist',
     })), [cache.cache.allArtists, cover]);
 
